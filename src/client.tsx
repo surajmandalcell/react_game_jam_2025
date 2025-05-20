@@ -6,9 +6,20 @@ import "./styles.css";
 // Import the logic to ensure it's loaded
 import "./logic";
 
-// Initialize the React application
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+// Wait for DOM to be fully loaded
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("DOM loaded, mounting React app");
+  const rootElement = document.getElementById("root");
+
+  if (!rootElement) {
+    console.error("Root element not found!");
+    return;
+  }
+
+  // Initialize the React application
+  ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+});

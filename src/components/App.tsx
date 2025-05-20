@@ -10,31 +10,54 @@ import EndGamePage from "./pages/EndGamePage";
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initialize Rune client
-    Rune.initClient({
-      onChange: ({ game, yourPlayerId }) => {
-        setGameState(game);
-        if (yourPlayerId) {
-          setPlayerId(yourPlayerId);
-        }
+    // Add debugging
+    console.log("App component mounted, initializing Rune client");
 
-        // Redirect to home if trying to access page out of order
-        const currentPath = window.location.pathname;
-        if (currentPath !== game.page && currentPath !== "/") {
-          redirectToHome();
-        }
-      },
-    });
+    try {
+      // Initialize Rune client
+      Rune.initClient({
+        onChange: ({ game, yourPlayerId }) => {
+          console.log("Rune onChange called", { game, yourPlayerId });
+          setGameState(game);
+          if (yourPlayerId) {
+            setPlayerId(yourPlayerId);
+          }
+
+          // Redirect to home if trying to access page out of order
+          const currentPath = window.location.pathname;
+          if (currentPath !== game.page && currentPath !== "/") {
+            redirectToHome();
+          }
+        },
+      });
+    } catch (err) {
+      console.error("Error initializing Rune client:", err);
+      setError(
+        `Failed to initialize game: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
   }, []);
-
   const redirectToHome = () => {
     Rune.actions.navigateTo(GamePage.HOME);
   };
 
+  // Show error state
+  if (error) {
+    return (
+      <div className="error-container">
+        <h1>Error Initializing Game</h1>
+        <p>{error}</p>
+        <button onClick={() => window.location.reload()}>Retry</button>
+      </div>
+    );
+  }
+
+  // Show loading state
   if (!gameState) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">Loading game state...</div>;
   }
 
   // Wrapper component for phone display
