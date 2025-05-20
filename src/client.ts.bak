@@ -1,36 +1,17 @@
-import { graphicsCtx, drawTile, loadTileSet, TileSet } from "./graphics";
-import backgroundSrc from "./assets/Background/Brown.png";
-import terrainSrc from "./assets/Terrain/Terrain (16x16).png";
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./components/App";
+import "./styles.css";
 
-import pinkIdleSrc from "./assets/Pink Man/Idle (32x32).png";
-import pinkRunSrc from "./assets/Pink Man/Run (32x32).png";
-import pinkJumpSrc from "./assets/Pink Man/Jump (32x32).png";
+// Import the logic to ensure it's loaded
+import "./logic";
 
-import frogIdleSrc from "./assets/Ninja Frog/Idle (32x32).png";
-import frogRunSrc from "./assets/Ninja Frog/Run (32x32).png";
-import frogJumpSrc from "./assets/Ninja Frog/Jump (32x32).png";
-
-import dudeIdleSrc from "./assets/Mask Dude/Idle (32x32).png";
-import dudeRunSrc from "./assets/Mask Dude/Run (32x32).png";
-import dudeJumpSrc from "./assets/Mask Dude/Jump (32x32).png";
-
-import guyIdleSrc from "./assets/Virtual Guy/Idle (32x32).png";
-import guyRunSrc from "./assets/Virtual Guy/Run (32x32).png";
-import guyJumpSrc from "./assets/Virtual Guy/Jump (32x32).png";
-
-import { Controls, GameState, tileMap, Animation } from "./logic";
-import { gameInputs } from "./input";
-import { PlayerId } from "rune-sdk";
-
-const TILE_MAPPING: Record<number, number> = {
-  1: 122,
-};
-
-interface AnimFrames {
-  idle: TileSet;
-  run: TileSet;
-  jump: TileSet;
-}
+// Initialize the React application
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
 
 const SCALE = 2;
 

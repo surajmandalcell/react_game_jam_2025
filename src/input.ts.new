@@ -1,0 +1,21 @@
+// filepath: e:\developement\game\react_game_jam_2025\src\input.ts
+// Input system for Humans & Gorilla game
+import { Controls } from "./types";
+
+// The state of the player's inputs for the grid
+export const gameInputs: Controls = {
+  x: 0,
+  y: 0,
+};
+
+// Update coordinates based on grid click
+export const updateCoordinates = (x: number, y: number): void => {
+  gameInputs.x = x;
+  gameInputs.y = y;
+};
+
+// Reset coordinates
+export const resetCoordinates = (): void => {
+  gameInputs.x = 0;
+  gameInputs.y = 0;
+};

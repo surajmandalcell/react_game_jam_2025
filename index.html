@@ -1,67 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1"
-    />
-    <title>Top Down Example</title>
-    <style>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1" />
+  <title>Humans & Gorilla</title>
+  <style>
+    body {
+      padding: 0;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    }
+
+    #root {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Mobile first design */
+    .phone-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      max-width: 414px;
+      max-height: 896px;
+      overflow: hidden;
+      background-color: #f5f5f5;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+      border-radius: 32px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .phone-header {
+      height: 30px;
+      background-color: #000;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .phone-content {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .phone-footer {
+      height: 20px;
+      background-color: #000;
+    }
+
+    .dark-mode .phone-container {
+      background-color: #121212;
+      color: #fff;
+    }
+
+    /* For desktop display */
+    @media (min-width: 768px) {
       body {
-        padding: 0;
-        margin: 0;
-        background: #409c9b;
+        background-color: #e0e0e0;
       }
 
-      #game-canvas {
-        position: absolute;
-        top: 0px;
-        left: 0px;
-        width: 100%;
-        height: 100%;
+      #root {
+        height: 100vh;
       }
 
-      #left {
-        width: 75px;
-        height: 75px;
-        bottom: 15px;
-        left: 15px;
-        position: absolute;
+      .phone-container {
+        height: 80vh;
       }
-      #right {
-        width: 75px;
-        height: 75px;
-        bottom: 15px;
-        left: 110px;
-        position: absolute;
-      }
-      #jump {
-        width: 75px;
-        height: 75px;
-        bottom: 15px;
-        right: 15px;
-        position: absolute;
-      }
+    }
+  </style>
+</head>
 
-      #debug {
-        position: absolute;
-        top: 0px;
-        left: 0px;
-        height: 20px;
-        width: 100%;
-        color: white;
-        background: rgba(0,0,0,.5)
-      }
-    </style>
-  </head>
-  <body>
-    <canvas id="game-canvas"></canvas>
-    <img src="/src/assets/Controls/left.png" id="left">
-    <img src="/src/assets/Controls/right.png" id="right">
-    <img src="/src/assets/Controls/jump.png" id="jump">
-    <div id="debug"></div>
-    <script type="module" src="/src/logic.ts"></script>
-    <script type="module" src="/src/client.ts"></script>
-  </body>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/client.tsx"></script>
+</body>
+
 </html>

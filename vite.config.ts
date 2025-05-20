@@ -1,12 +1,14 @@
-import path from "node:path"
-import { defineConfig } from "vite"
-import rune from "rune-sdk/vite"
-import { qrcode } from "vite-plugin-qrcode"
+import path from "node:path";
+import { defineConfig } from "vite";
+import rune from "rune-sdk/vite";
+import { qrcode } from "vite-plugin-qrcode";
+import react from "@vitejs/plugin-react";
 
 // https://vitejs.dev/config/
 export default defineConfig({
   base: "", // Makes paths relative
   plugins: [
+    react(), // Add React plugin
     qrcode(), // only applies in dev mode
     rune({
       logicPath: path.resolve("./src/logic.ts"),
@@ -14,4 +16,4 @@ export default defineConfig({
       ignoredDependencies: [],
     }),
   ],
-})
+});
