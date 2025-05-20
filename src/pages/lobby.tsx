@@ -1,7 +1,7 @@
+import React, { useEffect, useState } from "react";
 import { GameState, PlayerRole } from "../logic";
 import { Route, router } from "../router";
 import { PlayerId } from "rune-sdk/multiplayer";
-import React, { useEffect } from "react";
 
 interface LobbyProps {
   gameState: GameState | null;
@@ -9,13 +9,15 @@ interface LobbyProps {
 }
 
 export function Lobby({ gameState, myPlayerId }: LobbyProps) {
+  const [roleAnimation, setRoleAnimation] = useState<string | null>(null);
+
   useEffect(() => {
     document.title = "Gorilla vs Men - Lobby";
   }, []);
 
   if (!gameState || !myPlayerId) {
     return (
-      <div>
+      <div className="loading-container">
         <div className="nav-bar">
           <button
             onClick={() => router.navigate(Route.HOME)}
@@ -26,7 +28,8 @@ export function Lobby({ gameState, myPlayerId }: LobbyProps) {
           <h2>Lobby</h2>
           <div></div>
         </div>
-        <div>Loading game state...</div>
+        <div className="loading-spinner"></div>
+        <p>Loading game state...</p>
       </div>
     );
   }
@@ -34,9 +37,23 @@ export function Lobby({ gameState, myPlayerId }: LobbyProps) {
   const playerIds = Object.keys(gameState.playerRoles);
   const isHost = playerIds.length > 0 && playerIds[0] === myPlayerId;
   const myRole = gameState.playerRoles[myPlayerId];
+  const gorillaAssigned = !!gameState.gorillaPlayerId;
+  const canBeGorilla =
+    !gorillaAssigned || gameState.gorillaPlayerId === myPlayerId;
 
   const handleRoleSelection = (role: PlayerRole) => {
+    if (role === myRole) return;
+
+    if (role === PlayerRole.GORILLA && !canBeGorilla) {
+      // Show animation indicating this role is already taken
+      setRoleAnimation("shake");
+      setTimeout(() => setRoleAnimation(null), 500);
+      return;
+    }
+
     try {
+      setRoleAnimation(role === PlayerRole.GORILLA ? "gorilla" : "man");
+      setTimeout(() => setRoleAnimation(null), 800);
       Rune.actions.assignRole(role);
     } catch (error) {
       console.error("Error assigning role:", error);
@@ -44,8 +61,13 @@ export function Lobby({ gameState, myPlayerId }: LobbyProps) {
   };
 
   const handleInvite = () => {
-    // Invite functionality would be handled in Rune app natively
-    alert("Invite functionality is handled in the Rune app");
+    try {
+      // This would use the Rune API in the actual app
+      Rune.showInvitePlayers();
+    } catch (error) {
+      // Fallback if the API isn't available in test environment
+      alert("Invite functionality is handled in the Rune app");
+    }
   };
 
   const handleStartGame = () => {
@@ -56,8 +78,16 @@ export function Lobby({ gameState, myPlayerId }: LobbyProps) {
     }
   };
 
+  const getPlayerNameDisplay = (playerId: string) => {
+    if (playerId === myPlayerId) {
+      return "You";
+    }
+    // Only show first 4 characters of ID for privacy
+    return `Player ${playerId.substring(0, 4)}`;
+  };
+
   return (
-    <div>
+    <div className="lobby-page">
       <div className="nav-bar">
         <button
           onClick={() => router.navigate(Route.HOME)}
@@ -65,52 +95,99 @@ export function Lobby({ gameState, myPlayerId }: LobbyProps) {
         >
           ←
         </button>
-        <h2>Lobby</h2>
+        <h2>Game Lobby</h2>
         <div></div>
       </div>
 
       <div className="lobby-container">
-        <h3>Players ({Object.keys(gameState.playerRoles).length}/6)</h3>
+        <div className="lobby-header">
+          <h3>Players ({Object.keys(gameState.playerRoles).length}/6)</h3>
+          {isHost && <div className="host-badge floating">HOST</div>}
+        </div>
+
         <ul className="player-list">
           {Object.entries(gameState.playerRoles).map(([playerId, role]) => {
             const isMe = playerId === myPlayerId;
-            const roleClass =
-              role === PlayerRole.MAN ? "player-man" : "player-gorilla";
+            const isGorilla = role === PlayerRole.GORILLA;
+            const roleClass = isGorilla ? "player-gorilla" : "player-man";
 
             return (
-              <li key={playerId} className={`player-item ${roleClass}`}>
-                <span>
-                  {isMe ? "You" : `Player ${playerId.substring(0, 4)}`}
-                </span>
-                <span>{role.toUpperCase()}</span>
+              <li
+                key={playerId}
+                className={`player-item ${roleClass} ${isMe ? "is-me" : ""}`}
+              >
+                <div className="player-info">
+                  <span className="player-name">
+                    {getPlayerNameDisplay(playerId)}
+                    {isMe && <span className="player-you-tag">YOU</span>}
+                  </span>
+                  <span className="player-status">Ready</span>
+                </div>
+                <span className="player-role">{role.toUpperCase()}</span>
               </li>
             );
           })}
         </ul>
 
-        <div className="role-selection">
+        <div className="role-selection-container">
           <div
-            className={`role-button man ${myRole === PlayerRole.MAN ? "selected" : ""}`}
-            onClick={() => handleRoleSelection(PlayerRole.MAN)}
+            className={`role-selection ${roleAnimation ? `animate-${roleAnimation}` : ""}`}
           >
-            Man
+            <div
+              className={`role-button man ${myRole === PlayerRole.MAN ? "selected" : ""}`}
+              onClick={() => handleRoleSelection(PlayerRole.MAN)}
+            >
+              <div className="role-icon">👨</div>
+              <div className="role-name">Man</div>
+            </div>
+            <div
+              className={`role-button gorilla ${myRole === PlayerRole.GORILLA ? "selected" : ""} ${!canBeGorilla ? "disabled" : ""}`}
+              onClick={() => handleRoleSelection(PlayerRole.GORILLA)}
+            >
+              <div className="role-icon">🦍</div>
+              <div className="role-name">Gorilla</div>
+              {!canBeGorilla && <div className="role-taken">Taken</div>}
+            </div>
           </div>
-          <div
-            className={`role-button gorilla ${myRole === PlayerRole.GORILLA ? "selected" : ""}`}
-            onClick={() => handleRoleSelection(PlayerRole.GORILLA)}
-          >
-            Gorilla
+        </div>
+
+        <div className="lobby-info">
+          <div className="lobby-info-item">
+            <span className="info-label">Gorilla</span>
+            <span className="info-value">
+              {" "}
+              Hunts for men by revealing cells
+            </span>
+          </div>
+          <div className="lobby-info-item">
+            <span className="info-label">Men</span>
+            <span className="info-value">Place mines to catch the gorilla</span>
           </div>
         </div>
 
         <div className="button-container">
           <button onClick={handleInvite} className="button">
-            Invite Players
+            <span className="button-icon">👥</span> Invite Players
           </button>
           {isHost && (
-            <button onClick={handleStartGame} className="button">
-              Start Game
+            <button
+              onClick={handleStartGame}
+              className={`button ${Object.keys(gameState.playerRoles).length > 1 ? "" : "disabled"}`}
+              disabled={Object.keys(gameState.playerRoles).length <= 1}
+            >
+              <span className="button-icon">🎮</span> Start Game
+              {Object.keys(gameState.playerRoles).length <= 1 && (
+                <span className="button-hint">Need more players</span>
+              )}
             </button>
+          )}
+          {!isHost && (
+            <div className="waiting-host">
+              <div className="waiting-spinner"></div>
+              <div className="waiting-text pulsing-text">
+                Waiting for host to start game...
+              </div>
+            </div>
           )}
         </div>
       </div>
