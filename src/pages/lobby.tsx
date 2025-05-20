@@ -44,11 +44,8 @@ export function Lobby({ gameState, myPlayerId }: LobbyProps) {
   };
 
   const handleInvite = () => {
-    try {
-      Rune.showInvite();
-    } catch (error) {
-      console.error("Error showing invite UI:", error);
-    }
+    // Invite functionality would be handled in Rune app natively
+    alert("Invite functionality is handled in the Rune app");
   };
 
   const handleStartGame = () => {

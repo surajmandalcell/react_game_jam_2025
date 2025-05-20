@@ -1,7 +1,7 @@
 import { GameState, PlayerRole } from "../logic";
 import { Route, router } from "../router";
 import { PlayerId } from "rune-sdk/multiplayer";
-import React, { JSX, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 interface EndProps {
   gameState: GameState | null;
@@ -9,33 +9,9 @@ interface EndProps {
 }
 
 export function End({ gameState, myPlayerId }: EndProps) {
-  const [confetti, setConfetti] = useState<JSX.Element[]>([]);
-
   useEffect(() => {
     document.title = "Gorilla vs Men - Game Over";
-
-    createConfetti();
   }, []);
-
-  const createConfetti = () => {
-    const colors = ["#e74a8f", "#4a8fe7", "#8fe74a", "#e7e54a", "#4ae7e5"];
-    const newConfetti = [];
-
-    for (let i = 0; i < 100; i++) {
-      const style = {
-        left: `${Math.random() * 100}%`,
-        width: `${Math.random() * 10 + 5}px`,
-        height: `${Math.random() * 10 + 5}px`,
-        backgroundColor: colors[Math.floor(Math.random() * colors.length)],
-        borderRadius: Math.random() > 0.5 ? "50%" : "0",
-        animationDelay: `${Math.random() * 5}s`,
-      };
-
-      newConfetti.push(<div key={i} className="confetti" style={style}></div>);
-    }
-
-    setConfetti(newConfetti);
-  };
 
   if (!gameState || !myPlayerId) {
     return <div>Loading game state...</div>;
@@ -91,7 +67,19 @@ export function End({ gameState, myPlayerId }: EndProps) {
         </button>
       </div>
 
-      {confetti}
+      {/* Confetti is rendered in CSS instead of React components */}
+      <div className="confetti-container">
+        {Array.from({ length: 50 }).map((_, i) => {
+          const style = {
+            left: `${Math.random() * 100}%`,
+            animationDelay: `${Math.random() * 3}s`,
+            backgroundColor: ["#e74a8f", "#4a8fe7", "#8fe74a", "#e7e54a"][
+              Math.floor(Math.random() * 4)
+            ],
+          };
+          return <div key={i} className="confetti" style={style} />;
+        })}
+      </div>
     </div>
   );
 }

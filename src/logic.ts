@@ -35,10 +35,21 @@ export interface GameState {
   revealedCount: number;
 }
 
+// For placeMine and revealCell, we need to use objects to match Rune's expectations
+export interface PlaceMineParams {
+  x: number;
+  y: number;
+}
+
+export interface RevealCellParams {
+  x: number;
+  y: number;
+}
+
 type GameActions = {
-  assignRole: (role: PlayerRole) => void;
-  placeMine: (x: number, y: number) => void;
-  revealCell: (x: number, y: number) => void;
+  assignRole: (params: PlayerRole) => void;
+  placeMine: (params: PlaceMineParams) => void;
+  revealCell: (params: RevealCellParams) => void;
   startGame: () => void;
   restartGame: () => void;
 };
@@ -118,10 +129,12 @@ Rune.initLogic({
       game.playerRoles[playerId] = role;
     },
 
-    placeMine: (x, y, { game, playerId }) => {
+    placeMine: (params, { game, playerId }) => {
       if (game.status !== GameStatus.PLACING_MINES) return;
       if (game.playerRoles[playerId] !== PlayerRole.MAN) return;
       if (game.minesToPlace[playerId] <= 0) return;
+
+      const { x, y } = params;
       if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return;
       if (game.grid[y][x].hasMine) return;
 
@@ -135,9 +148,11 @@ Rune.initLogic({
       }
     },
 
-    revealCell: (x, y, { game, playerId }) => {
+    revealCell: (params, { game, playerId }) => {
       if (game.status !== GameStatus.PLAYING) return;
       if (playerId !== game.gorillaPlayerId) return;
+
+      const { x, y } = params;
       if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return;
       if (game.grid[y][x].revealed) return;
 

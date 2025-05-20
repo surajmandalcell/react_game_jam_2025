@@ -1,14 +1,9 @@
 import { GameState, GameStatus } from "./logic";
 import { Route, router } from "./router";
-import { PlayerId } from "rune-sdk/multiplayer";
-import { Home, Lobby, Settings, Game, End } from "./pages";
 import "./styles.css";
-import React from "react";
-import ReactDOM from "react-dom/client";
 
 let gameState: GameState | null = null;
-let myPlayerId: PlayerId | undefined;
-let root: ReactDOM.Root | null = null;
+let myPlayerId: string | undefined;
 
 function initUI(): void {
   const appRoot = document.getElementById("root");
@@ -17,8 +12,6 @@ function initUI(): void {
     return;
   }
 
-  root = ReactDOM.createRoot(appRoot);
-
   const isDarkMode = localStorage.getItem("darkMode") === "true";
   if (isDarkMode) {
     document.body.classList.add("dark-mode");
@@ -26,30 +19,8 @@ function initUI(): void {
 }
 
 function renderCurrentPage(): void {
-  if (!root) return;
-
   const currentRoute = router.getCurrentRoute();
-
-  switch (currentRoute) {
-    case Route.HOME:
-      root.render(React.createElement(Home));
-      break;
-    case Route.LOBBY:
-      root.render(React.createElement(Lobby, { gameState, myPlayerId }));
-      break;
-    case Route.SETTINGS:
-      root.render(React.createElement(Settings));
-      break;
-    case Route.GAME:
-      root.render(React.createElement(Game, { gameState, myPlayerId }));
-      break;
-    case Route.END:
-      root.render(React.createElement(End, { gameState, myPlayerId }));
-      break;
-    default:
-      router.navigate(Route.HOME);
-      break;
-  }
+  window.location.hash = currentRoute;
 }
 
 function initRuneClient(): void {
@@ -92,3 +63,14 @@ function init(): void {
 }
 
 document.addEventListener("DOMContentLoaded", init);
+
+// Make game state available globally for components
+declare global {
+  interface Window {
+    gameState: GameState | null;
+    myPlayerId: string | undefined;
+  }
+}
+
+window.gameState = gameState;
+window.myPlayerId = myPlayerId;

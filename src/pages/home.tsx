@@ -7,21 +7,11 @@ export function Home() {
   }, []);
 
   const handleNewGame = () => {
-    try {
-      Rune.showJoinGame();
-      router.navigate(Route.LOBBY);
-    } catch (error) {
-      console.error("Error starting new game:", error);
-    }
+    router.navigate(Route.LOBBY);
   };
 
   const handleCustomLobby = () => {
-    try {
-      Rune.showCreateGame();
-      router.navigate(Route.LOBBY);
-    } catch (error) {
-      console.error("Error creating custom lobby:", error);
-    }
+    router.navigate(Route.LOBBY);
   };
 
   const handleSettings = () => {

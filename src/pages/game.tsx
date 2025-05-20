@@ -42,44 +42,18 @@ export function Game({ gameState, myPlayerId }: GameProps) {
     ) {
       if (gameState.minesToPlace[myPlayerId] > 0) {
         try {
-          Rune.actions.placeMine(x, y);
+          Rune.actions.placeMine({ x, y });
         } catch (error) {
           console.error("Error placing mine:", error);
         }
       }
     } else if (gameState.status === GameStatus.PLAYING && isGorilla) {
       try {
-        Rune.actions.revealCell(x, y);
+        Rune.actions.revealCell({ x, y });
       } catch (error) {
         console.error("Error revealing cell:", error);
       }
     }
-  };
-
-  const renderGrid = () => {
-    const grid = [];
-    for (let y = 0; y < GRID_SIZE; y++) {
-      for (let x = 0; x < GRID_SIZE; x++) {
-        const cell = gameState.grid[y][x];
-        let cellClass = "cell";
-
-        if (cell.revealed) {
-          cellClass += " revealed";
-          if (cell.hasMine) {
-            cellClass += " mine";
-          }
-        }
-
-        grid.push(
-          <div
-            key={`${x}-${y}`}
-            className={cellClass}
-            onClick={() => handleCellClick(x, y)}
-          ></div>
-        );
-      }
-    }
-    return grid;
   };
 
   return (
@@ -92,7 +66,29 @@ export function Game({ gameState, myPlayerId }: GameProps) {
 
       <div className="game-status">{statusMessage}</div>
 
-      <div className="game-grid">{renderGrid()}</div>
+      <div className="game-grid">
+        {Array.from({ length: GRID_SIZE * GRID_SIZE }).map((_, index) => {
+          const x = index % GRID_SIZE;
+          const y = Math.floor(index / GRID_SIZE);
+          const cell = gameState.grid[y][x];
+          let cellClass = "cell";
+
+          if (cell.revealed) {
+            cellClass += " revealed";
+            if (cell.hasMine) {
+              cellClass += " mine";
+            }
+          }
+
+          return (
+            <div
+              key={`${x}-${y}`}
+              className={cellClass}
+              onClick={() => handleCellClick(x, y)}
+            ></div>
+          );
+        })}
+      </div>
     </div>
   );
 }

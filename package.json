@@ -11,10 +11,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "rune-sdk": "^4.25.5"
   },
   "devDependencies": {
-    "eslint": "^9.7.0",
+    "@types/react": "^19.1.4",
     "globals": "^15.8.0",
     "prettier": "^3.3.3",
     "typescript": "^5.4.5",
