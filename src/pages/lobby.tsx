@@ -141,12 +141,11 @@ export function Lobby({ gameState, myPlayerId }: LobbyProps) {
               <div className="role-name">Man</div>
             </div>
             <div
-              className={`role-button gorilla ${myRole === PlayerRole.GORILLA ? "selected" : ""} ${!canBeGorilla ? "disabled" : ""}`}
+              className={`role-button gorilla ${myRole === PlayerRole.GORILLA ? "selected" : ""} ${!canBeGorilla ? "disabled" : ""} ${!canBeGorilla ? "bg-gray-500" : ""}`}
               onClick={() => handleRoleSelection(PlayerRole.GORILLA)}
             >
               <div className="role-icon">🦍</div>
               <div className="role-name">Gorilla</div>
-              {!canBeGorilla && <div className="role-taken">Taken</div>}
             </div>
           </div>
         </div>

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import { GameState, GameStatus } from "./logic";
+import { End, Game, Home, Lobby, Settings } from "./pages";
 import { Route, router } from "./router";
-import { Home, Lobby, Game, End, Settings } from "./pages";
 import "./styles.css";
 
 let gameState: GameState | null = null;
