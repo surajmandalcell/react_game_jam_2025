@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import { GameState, GameStatus } from "./logic";
 import { End, Game, Home, Lobby, Settings } from "./pages";
 import { Route, router } from "./router";
-import "./styles.css";
+import "./index.css";
 
 let gameState: GameState | null = null;
 let myPlayerId: string | undefined;

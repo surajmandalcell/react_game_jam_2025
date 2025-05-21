@@ -101,8 +101,12 @@ export function Lobby({ gameState, myPlayerId }: LobbyProps) {
 
       <div className="lobby-container">
         <div className="lobby-header">
-          <h3>Players ({Object.keys(gameState.playerRoles).length}/6)</h3>
-          {isHost && <div className="host-badge floating">HOST</div>}
+          <span className="flex flex-row">
+            Players ({Object.keys(gameState.playerRoles).length}/6)
+            {isHost && (
+              <div className="host-badge floating super"> &nbsp; &gt; HOST</div>
+            )}
+          </span>
         </div>
 
         <ul className="player-list">
@@ -141,7 +145,7 @@ export function Lobby({ gameState, myPlayerId }: LobbyProps) {
               <div className="role-name">Man</div>
             </div>
             <div
-              className={`role-button gorilla ${myRole === PlayerRole.GORILLA ? "selected" : ""} ${!canBeGorilla ? "disabled" : ""} ${!canBeGorilla ? "bg-gray-500" : ""}`}
+              className={`role-button gorilla ${myRole === PlayerRole.GORILLA ? "selected" : ""} ${!canBeGorilla ? "disabled" : ""} ${!canBeGorilla ? "!bg-gray-500" : ""}`}
               onClick={() => handleRoleSelection(PlayerRole.GORILLA)}
             >
               <div className="role-icon">🦍</div>
