@@ -78,70 +78,24 @@ body {
   flex-direction: column;
   align-items: center;
   padding: 0;
+  padding-bottom: 60px;
   box-sizing: border-box;
   overflow: hidden;
+  @apply bg-background;
 }
 
 h1,
 h2,
 h3 {
-  color: var(--text-color);
+  /* color: var(--text-color); */
   text-align: center;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  /* text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); */
   margin-top: 0.5em;
   margin-bottom: 0.5em;
 }
 
 h1 {
   font-size: 2.5rem;
-}
-
-.button {
-  background-color: var(--button-bg);
-  color: var(--button-text);
-  border: none;
-  border-radius: 8px;
-  padding: 10px 28px;
-  margin: 10px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  position: relative;
-  overflow: hidden;
-}
-
-.button::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
-}
-
-.button:hover::after {
-  opacity: 1;
-}
-
-.button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.button.secondary {
-  background-color: var(--secondary-color);
 }
 
 .game-grid {
@@ -681,4 +635,116 @@ input:checked + .slider:before {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Game animations */
+@keyframes mine-placed {
+  0% {
+    transform: scale(0.8);
+    background-color: theme("colors.blue.400");
+  }
+  50% {
+    transform: scale(1.2);
+    background-color: theme("colors.blue.500");
+  }
+  100% {
+    transform: scale(1);
+    background-color: theme("colors.blue.200");
+  }
+}
+
+@keyframes explosion {
+  0% {
+    transform: scale(1);
+    background-color: theme("colors.orange.300");
+  }
+  50% {
+    transform: scale(1.5);
+    background-color: theme("colors.red.500");
+  }
+  100% {
+    transform: scale(1);
+    background-color: theme("colors.red.300");
+  }
+}
+
+@keyframes reveal {
+  0% {
+    transform: scale(0.9);
+    background-color: theme("colors.gray.300");
+  }
+  50% {
+    transform: scale(1.05);
+    background-color: theme("colors.gray.200");
+  }
+  100% {
+    transform: scale(1);
+    background-color: theme("colors.gray.100");
+  }
+}
+
+@keyframes shake {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+  75% {
+    transform: translateX(-5px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes gorilla {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2) rotate(5deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes man {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2) rotate(-5deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-mine-placed {
+  animation: mine-placed 0.5s ease-in-out;
+}
+
+.animate-explosion {
+  animation: explosion 0.8s ease-in-out;
+}
+
+.animate-reveal {
+  animation: reveal 0.5s ease-in-out;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animate-gorilla {
+  animation: gorilla 0.8s ease-in-out;
+}
+
+.animate-man {
+  animation: man 0.8s ease-in-out;
 }

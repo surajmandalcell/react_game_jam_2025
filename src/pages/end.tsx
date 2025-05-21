@@ -1,7 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { GameState, PlayerRole } from "../logic";
 import { Route, router } from "../router";
 import { PlayerId } from "rune-sdk/multiplayer";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface EndProps {
   gameState: GameState | null;
@@ -9,29 +19,20 @@ interface EndProps {
 }
 
 export function End({ gameState, myPlayerId }: EndProps) {
-  const [showConfetti, setShowConfetti] = useState(false);
-
   useEffect(() => {
     document.title = "Gorilla vs Men - Game Over";
-
-    // Delay confetti animation for a more dramatic effect
-    const timer = setTimeout(() => {
-      setShowConfetti(true);
-    }, 500);
-
-    return () => clearTimeout(timer);
   }, []);
 
   if (!gameState || !myPlayerId) {
     return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Loading game results...</p>
+      <div className="flex flex-col items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <p className="mt-4 text-muted-foreground">Loading game state...</p>
       </div>
     );
   }
 
-  const handleNewGame = () => {
+  const handlePlayAgain = () => {
     try {
       Rune.actions.restartGame();
     } catch (error) {
@@ -39,114 +40,113 @@ export function End({ gameState, myPlayerId }: EndProps) {
     }
   };
 
-  const handleHome = () => {
-    router.navigate(Route.HOME);
+  const myRole = gameState.playerRoles[myPlayerId];
+  const isWinner = gameState.winner === myPlayerId;
+  const isGorilla = myRole === PlayerRole.GORILLA;
+  const gorillaWon = gameState.winningRole === PlayerRole.GORILLA;
+  const manWon = gameState.winningRole === PlayerRole.MAN;
+
+  const getPlayerNameDisplay = (playerId: string) => {
+    if (playerId === myPlayerId) {
+      return "You";
+    }
+    // Only show first 4 characters of ID for privacy
+    return `Player ${playerId.substring(0, 4)}`;
   };
 
-  // Determine the winner and message
-  const isWinner = gameState.winner === myPlayerId;
-  const winnerRole = gameState.winningRole;
-
-  let winnerMessage = "";
-  let winnerName = "";
-  let winnerIcon = "";
-  let winnerColors = "";
-
-  if (gameState.winner) {
-    if (winnerRole === PlayerRole.GORILLA) {
-      winnerMessage =
-        "The Gorilla found all the men without hitting any mines!";
-      winnerIcon = "🦍";
-      winnerColors = "gorilla-win";
-    } else {
-      winnerMessage = "The Gorilla hit a mine!";
-      winnerIcon = "💥";
-      winnerColors = "man-win";
+  const getWinnerMessage = () => {
+    if (!gameState.winner) {
+      return "It's a tie!";
     }
 
-    winnerName =
-      gameState.winner === myPlayerId
-        ? "You Won!"
-        : `Player ${gameState.winner.substring(0, 4)} Won!`;
-  } else {
-    winnerMessage = "Game Over";
-    winnerName = "No winner";
-    winnerIcon = "🏳️";
-    winnerColors = "";
-  }
+    if (isWinner) {
+      return "You won!";
+    } else {
+      return `${getPlayerNameDisplay(gameState.winner)} won!`;
+    }
+  };
+
+  const getWinDescription = () => {
+    if (gorillaWon) {
+      return "The gorilla successfully revealed all safe cells!";
+    } else if (manWon) {
+      return "The gorilla stepped on a mine!";
+    } else {
+      return "The game ended in a tie.";
+    }
+  };
 
   return (
-    <div className={`win-container ${winnerColors}`}>
-      <div className="win-content">
-        <h2 className="game-over-title">Game Over!</h2>
-
-        <div className="win-icon-container">
-          <div className="win-icon">{winnerIcon}</div>
-        </div>
-
-        <p className="win-message">{winnerMessage}</p>
-        <p className="winner-name">{winnerName}</p>
-
-        {isWinner && (
-          <div className="win-badge">
-            <span className="win-badge-text">VICTORY</span>
+    <div className="flex flex-col items-center justify-center h-screen p-4 bg-background">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">Game Over</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-center">
+            <h2
+              className={cn(
+                "text-3xl font-bold mb-2",
+                isWinner
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400"
+              )}
+            >
+              {getWinnerMessage()}
+            </h2>
+            <p className="text-muted-foreground">{getWinDescription()}</p>
           </div>
-        )}
 
-        <div className="game-stats-summary">
-          <div className="stat-item">
-            <span className="stat-label">Cells Revealed</span>
-            <span className="stat-value">{gameState.revealedCount}</span>
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <div
+              className={cn(
+                "p-4 rounded-lg text-center",
+                gorillaWon
+                  ? "bg-amber-100 dark:bg-amber-900/30 ring-2 ring-amber-500"
+                  : "bg-gray-100 dark:bg-gray-800"
+              )}
+            >
+              <div className="text-4xl mb-2">🦍</div>
+              <h3 className="font-medium">Gorilla</h3>
+              <Badge
+                variant={gorillaWon ? "default" : "outline"}
+                className="mt-1"
+              >
+                {gorillaWon ? "WINNER" : "LOST"}
+              </Badge>
+            </div>
+
+            <div
+              className={cn(
+                "p-4 rounded-lg text-center",
+                manWon
+                  ? "bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-500"
+                  : "bg-gray-100 dark:bg-gray-800"
+              )}
+            >
+              <div className="text-4xl mb-2">👨</div>
+              <h3 className="font-medium">Men</h3>
+              <Badge variant={manWon ? "default" : "outline"} className="mt-1">
+                {manWon ? "WINNER" : "LOST"}
+              </Badge>
+            </div>
           </div>
-          <div className="stat-item">
-            <span className="stat-label">Players</span>
-            <span className="stat-value">
-              {Object.keys(gameState.playerRoles).length}
-            </span>
+
+          <div className="text-center mt-4">
+            <p className="text-sm text-muted-foreground mb-2">
+              {isWinner
+                ? "Congratulations on your victory!"
+                : "Better luck next time!"}
+            </p>
           </div>
-        </div>
-
-        <div className="button-container">
-          <button onClick={handleNewGame} className="button">
-            <span className="button-icon">🎮</span> New Game
-          </button>
-          <button onClick={handleHome} className="button secondary">
-            <span className="button-icon">🏠</span> Home
-          </button>
-        </div>
-      </div>
-
-      {/* Confetti animation */}
-      {showConfetti && (
-        <div className="confetti-container">
-          {Array.from({ length: 50 }).map((_, i) => {
-            const randomSize = Math.floor(Math.random() * 10) + 5;
-            const randomDelay = Math.random() * 3;
-            const randomDuration = Math.random() * 3 + 3;
-            const randomColor = [
-              "#e74a8f",
-              "#4a8fe7",
-              "#8fe74a",
-              "#e7e54a",
-              "#4ae7e5",
-              "#e74a4a",
-              "#ffffff",
-            ][Math.floor(Math.random() * 7)];
-
-            const style = {
-              left: `${Math.random() * 100}%`,
-              width: `${randomSize}px`,
-              height: `${randomSize * 1.5}px`,
-              animationDelay: `${randomDelay}s`,
-              animationDuration: `${randomDuration}s`,
-              backgroundColor: randomColor,
-              transform: `rotate(${Math.random() * 360}deg)`,
-            };
-
-            return <div key={i} className="confetti" style={style} />;
-          })}
-        </div>
-      )}
+        </CardContent>
+        <CardFooter className="flex justify-center gap-4">
+          <Button variant="outline" onClick={() => router.navigate(Route.HOME)}>
+            Home
+          </Button>
+          <Button onClick={handlePlayAgain}>Play Again</Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

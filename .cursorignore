@@ -1,0 +1,9 @@
+package-lock.json
+
+repomix-output.txt
+
+src\components\ui
+src\assets\
+dist\
+
+node_modules\

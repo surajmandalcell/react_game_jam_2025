@@ -1,9 +1,10 @@
 import type { PlayerId, RuneClient } from "rune-sdk/multiplayer";
 
 export const GRID_SIZE = 10;
-export const TOTAL_MEN = 20;
-export const TOTAL_PLAYERS = 6;
-export const MINES_PER_PLAYER = 1;
+export const TOTAL_MEN = 2;
+export const TOTAL_PLAYERS = 3;
+export const MINES_PER_PLAYER = 3;
+export const MINE_PLACEMENT_TIME = 10; // 10 seconds to place mines
 
 export enum PlayerRole {
   MAN = "man",
@@ -33,6 +34,8 @@ export interface GameState {
   winner: PlayerId | null;
   winningRole: PlayerRole | null;
   revealedCount: number;
+  minePlacementEndTime?: number; // Timestamp when mine placement should end
+  randomMinesPlaced: Record<PlayerId, boolean>; // Track if random mines were placed for a player
 }
 
 // For placeMine and revealCell, we need to use objects to match Rune's expectations
@@ -53,10 +56,6 @@ type GameActions = {
   startGame: () => void;
   restartGame: () => void;
 };
-
-declare global {
-  const Rune: RuneClient<GameState, GameActions>;
-}
 
 function initializeGrid(): Cell[][] {
   const grid: Cell[][] = [];
@@ -92,6 +91,72 @@ function checkGorillaWin(game: GameState): boolean {
   return game.revealedCount === totalCells - totalMines;
 }
 
+function placeRandomMines(
+  game: GameState,
+  playerId: PlayerId,
+  random: () => number
+): void {
+  const minesToPlace = game.minesToPlace[playerId];
+  if (minesToPlace <= 0) return;
+
+  // Create a list of all available cells
+  const availableCells: { x: number; y: number }[] = [];
+  for (let y = 0; y < GRID_SIZE; y++) {
+    for (let x = 0; x < GRID_SIZE; x++) {
+      if (!game.grid[y][x].hasMine) {
+        availableCells.push({ x, y });
+      }
+    }
+  }
+
+  // Shuffle the available cells using random()
+  for (let i = availableCells.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [availableCells[i], availableCells[j]] = [
+      availableCells[j],
+      availableCells[i],
+    ];
+  }
+
+  // Place mines randomly
+  for (let i = 0; i < minesToPlace && i < availableCells.length; i++) {
+    const { x, y } = availableCells[i];
+    game.grid[y][x].hasMine = true;
+    game.grid[y][x].mineOwnerId = playerId;
+  }
+
+  // Mark all mines as placed for this player
+  game.minesToPlace[playerId] = 0;
+  game.randomMinesPlaced[playerId] = true;
+}
+
+function checkMinePlacementTimer(
+  game: GameState,
+  gameTime: number,
+  random: () => number
+): void {
+  if (game.status !== GameStatus.PLACING_MINES || !game.minePlacementEndTime)
+    return;
+
+  if (gameTime >= game.minePlacementEndTime) {
+    // Time's up! Place random mines for any players who haven't placed all their mines
+    for (const playerId in game.playerRoles) {
+      if (
+        game.playerRoles[playerId] === PlayerRole.MAN &&
+        game.minesToPlace[playerId] > 0
+      ) {
+        placeRandomMines(game, playerId, random);
+      }
+    }
+
+    // Move to playing state if all mines are placed
+    if (allMinesPlaced(game)) {
+      game.status = GameStatus.PLAYING;
+      game.currentTurn = game.gorillaPlayerId ?? null;
+    }
+  }
+}
+
 Rune.initLogic({
   minPlayers: 1,
   maxPlayers: TOTAL_PLAYERS,
@@ -105,6 +170,8 @@ Rune.initLogic({
       winner: null,
       winningRole: null,
       revealedCount: 0,
+      minePlacementEndTime: undefined,
+      randomMinesPlaced: {},
     };
 
     allPlayerIds.forEach((playerId) => {
@@ -170,19 +237,48 @@ Rune.initLogic({
       }
     },
 
-    startGame: (_, { game }) => {
+    startGame: (_, { game, random, gameTime }) => {
       if (game.status !== GameStatus.LOBBY) return;
 
+      // Make sure we have at least one gorilla
       if (!game.gorillaPlayerId) {
         const playerIds = Object.keys(game.playerRoles);
         if (playerIds.length > 0) {
-          const randomPlayerId =
-            playerIds[Math.floor(Math.random() * playerIds.length)];
-          game.playerRoles[randomPlayerId] = PlayerRole.GORILLA;
-          game.gorillaPlayerId = randomPlayerId as PlayerId;
+          try {
+            // Randomly assign a gorilla if none was selected
+            const randomIndex = Math.floor(random() * playerIds.length);
+            const randomPlayerId = playerIds[randomIndex];
+            game.playerRoles[randomPlayerId] = PlayerRole.GORILLA;
+            game.gorillaPlayerId = randomPlayerId as PlayerId;
+          } catch (error) {
+            console.error("Error assigning gorilla:", error);
+            // If random fails, just pick the first player
+            if (playerIds.length > 0) {
+              const firstPlayerId = playerIds[0];
+              game.playerRoles[firstPlayerId] = PlayerRole.GORILLA;
+              game.gorillaPlayerId = firstPlayerId as PlayerId;
+            } else {
+              return; // Exit if we can't assign a gorilla
+            }
+          }
+        } else {
+          // No players available
+          return;
         }
       }
 
+      // Initialize mines to place for each player
+      for (const playerId in game.playerRoles) {
+        if (game.playerRoles[playerId] === PlayerRole.MAN) {
+          game.minesToPlace[playerId] = MINES_PER_PLAYER;
+          game.randomMinesPlaced[playerId] = false;
+        }
+      }
+
+      // Set the end time for mine placement
+      game.minePlacementEndTime = gameTime + MINE_PLACEMENT_TIME * 1000;
+
+      // Change game state to placing mines
       game.status = GameStatus.PLACING_MINES;
     },
 
@@ -204,4 +300,10 @@ Rune.initLogic({
       }
     },
   },
+
+  update: ({ game, gameTime, random }) => {
+    checkMinePlacementTimer(game, gameTime, random);
+  },
+
+  updatesPerSecond: 10,
 });

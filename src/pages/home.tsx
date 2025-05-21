@@ -1,25 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Route, router } from "../router";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 export function Home() {
-  const [animateTitle, setAnimateTitle] = useState(false);
-
   useEffect(() => {
-    document.title = "Gorilla vs Men - Home";
-
-    // Add title animation after a short delay
-    const timer = setTimeout(() => {
-      setAnimateTitle(true);
-    }, 300);
-
-    return () => clearTimeout(timer);
+    document.title = "Gorilla vs Men";
   }, []);
 
-  const handleNewGame = () => {
-    router.navigate(Route.LOBBY);
-  };
-
-  const handleCustomLobby = () => {
+  const handlePlay = () => {
     router.navigate(Route.LOBBY);
   };
 
@@ -28,47 +25,54 @@ export function Home() {
   };
 
   return (
-    <div className="menu-container">
-      <div className={`title-container ${animateTitle ? "animate-in" : ""}`}>
-        <h1 className="menu-title">
-          <span className="title-part title-gorilla">GORILLA</span>
-          <span className="title-part title-vs">VS</span>
-          <span className="title-part title-men">MEN</span>
-        </h1>
+    <div className="flex flex-col items-center justify-center h-screen p-4 bg-background w-full">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl">Gorilla vs Men</CardTitle>
+          <CardDescription>A strategic multiplayer game</CardDescription>
+        </CardHeader>
 
-        <div className="game-tagline">
-          Hunt or be hunted in this multiplayer challenge
-        </div>
-      </div>
+        <CardContent className="flex flex-col items-center">
+          <div className="flex items-center justify-center gap-8 mb-6">
+            <div className="flex flex-col items-center">
+              <span className="text-4xl mb-2">👨</span>
+              <span className="text-sm">Men</span>
+            </div>
+            <span className="text-xl">vs</span>
+            <div className="flex flex-col items-center">
+              <span className="text-4xl mb-2">🦍</span>
+              <span className="text-sm">Gorilla</span>
+            </div>
+          </div>
 
-      <div className={`game-preview ${animateTitle ? "animate-in" : ""}`}>
-        <div className="game-preview-gorilla">
-          <div className="preview-icon">🦍</div>
-          <div className="preview-label">The Gorilla</div>
-        </div>
-        <div className="game-preview-vs">VS</div>
-        <div className="game-preview-men">
-          <div className="preview-icon">👨👨👨</div>
-          <div className="preview-label">The Men</div>
-        </div>
-      </div>
+          <Separator className="my-4" />
 
-      <div className={`button-container ${animateTitle ? "animate-in" : ""}`}>
-        <button onClick={handleNewGame} className="button main-button">
-          <span className="button-icon">🎮</span> Play Now
-        </button>
-        <button onClick={handleCustomLobby} className="button">
-          <span className="button-icon">👥</span> Custom Lobby
-        </button>
-        <button onClick={handleSettings} className="button secondary">
-          <span className="button-icon">⚙️</span> Settings
-        </button>
-      </div>
+          <div className="text-center mb-6">
+            <h3 className="text-lg font-medium mb-2">How to Play</h3>
+            <p className="text-sm text-muted-foreground mb-2">
+              Men place mines to trap the gorilla.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              The gorilla tries to reveal all cells without hitting mines.
+            </p>
+          </div>
+        </CardContent>
 
-      <div className="game-footer-info">
-        <div className="game-version">Version 1.0.0</div>
-        <div className="game-platform">Powered by Rune</div>
-      </div>
+        <CardFooter className="flex flex-col gap-2">
+          <Button className="w-full" onClick={handlePlay}>
+            Play Now
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full text-foreground"
+            onClick={handleSettings}
+          >
+            Settings
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <p className="mt-4 text-xs text-muted-foreground">Made with Rune SDK</p>
     </div>
   );
 }
