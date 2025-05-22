@@ -2,19 +2,12 @@ import React, { useEffect, useState } from "react";
 import { GameState, GameStatus, PlayerRole, GRID_SIZE } from "../logic";
 import { PlayerId } from "rune-sdk/multiplayer";
 import { cn } from "@/lib/utils";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Route, router } from "../router";
 
 interface GameProps {
   gameState: GameState | null;
@@ -28,7 +21,6 @@ export function Game({ gameState, myPlayerId }: GameProps) {
     type: string;
   } | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
-  const navigate = useNavigate();
 
   useEffect(() => {
     document.title = "Gorilla vs Men - Game";
@@ -222,7 +214,7 @@ export function Game({ gameState, myPlayerId }: GameProps) {
             size="sm"
             onClick={() => {
               Rune.actions.restartGame();
-              navigate("/");
+              router.navigate(Route.HOME);
             }}
             className="flex items-center gap-1 text-foreground"
           >

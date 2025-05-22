@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
 import { GameState, GameStatus } from "./logic";
 import { End, Game, Home, Lobby, Settings } from "./pages";
 import { Route, router } from "./router";
@@ -91,7 +92,8 @@ function initRuneClient(): void {
       ) {
         router.navigate(Route.LOBBY);
       } else if (
-        game.status === GameStatus.PLAYING &&
+        (game.status === GameStatus.PLAYING ||
+          game.status === GameStatus.PLACING_MINES) &&
         router.getCurrentRoute() !== Route.GAME
       ) {
         router.navigate(Route.GAME);
@@ -114,7 +116,9 @@ function init(): void {
 
     reactRoot.render(
       <React.StrictMode>
-        <App />
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
       </React.StrictMode>
     );
   }
