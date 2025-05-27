@@ -1,12 +1,18 @@
 import React, { useEffect, useState } from "react";
-import { GameState, GameStatus, PlayerRole, GRID_SIZE } from "../logic";
+import {
+  GameState,
+  GameStatus,
+  PlayerRole,
+  GRID_SIZE,
+  MINES_PER_PLAYER,
+} from "../logic";
 import { PlayerId } from "rune-sdk/multiplayer";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Clock, Target, Bomb, Crosshair } from "lucide-react";
 import { Route, router } from "../router";
 
 interface GameProps {
@@ -37,21 +43,21 @@ export function Game({ gameState, myPlayerId }: GameProps) {
     }
 
     const updateTimer = () => {
-      const now = Date.now();
+      const now = Rune.gameTime();
       const endTime = gameState.minePlacementEndTime || 0;
       const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
       setTimeLeft(remaining);
     };
 
     updateTimer();
-    const timerId = setInterval(updateTimer, 1000);
+    const timerId = setInterval(updateTimer, 500); // Update more frequently for smoother countdown
 
     return () => clearInterval(timerId);
   }, [gameState?.status, gameState?.minePlacementEndTime]);
 
   if (!gameState || !myPlayerId) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen">
+      <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-b from-background to-muted">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         <p className="mt-4 text-muted-foreground">Loading game state...</p>
       </div>
@@ -81,7 +87,7 @@ export function Game({ gameState, myPlayerId }: GameProps) {
     if (gameState.minePlacementEndTime) {
       const remainingTime = Math.max(
         0,
-        Math.floor((gameState.minePlacementEndTime - Date.now()) / 1000)
+        Math.floor((gameState.minePlacementEndTime - Rune.gameTime()) / 1000)
       );
       if (remainingTime > 0) {
         statusMessage += ` (${remainingTime}s)`;
@@ -109,7 +115,7 @@ export function Game({ gameState, myPlayerId }: GameProps) {
         try {
           Rune.actions.placeMine({ x, y });
           setAnimation({ x, y, type: "mine-placed" });
-          setTimeout(() => setAnimation(null), 500);
+          setTimeout(() => setAnimation(null), 800);
         } catch (error) {
           console.error("Error placing mine:", error);
         }
@@ -123,7 +129,7 @@ export function Game({ gameState, myPlayerId }: GameProps) {
         try {
           Rune.actions.revealCell({ x, y });
           setAnimation({ x, y, type: cell.hasMine ? "explosion" : "reveal" });
-          setTimeout(() => setAnimation(null), 500);
+          setTimeout(() => setAnimation(null), 800);
         } catch (error) {
           console.error("Error revealing cell:", error);
         }
@@ -135,6 +141,59 @@ export function Game({ gameState, myPlayerId }: GameProps) {
     return Object.values(gameState.playerRoles).filter(
       (playerRole) => playerRole === role
     ).length;
+  };
+
+  const renderTimer = () => {
+    if (
+      gameState.status !== GameStatus.PLACING_MINES ||
+      !gameState.minePlacementEndTime
+    ) {
+      return null;
+    }
+
+    // Calculate percentage for circular timer
+    const maxTime = 10; // 10 seconds total
+    const percentage = (timeLeft / maxTime) * 100;
+    const strokeDasharray = `${percentage} 100`;
+    const urgentTime = timeLeft <= 3;
+
+    return (
+      <div className="relative w-16 h-16 mb-2">
+        <svg className="w-full h-full" viewBox="0 0 36 36">
+          {/* Background circle */}
+          <circle
+            cx="18"
+            cy="18"
+            r="16"
+            fill="none"
+            stroke="currentColor"
+            className="text-muted-foreground opacity-20"
+            strokeWidth="2"
+          />
+          {/* Timer progress */}
+          <circle
+            cx="18"
+            cy="18"
+            r="16"
+            fill="none"
+            stroke="currentColor"
+            className={`${urgentTime ? "text-red-500 animate-pulse" : "text-primary"}`}
+            strokeWidth="2"
+            strokeDasharray={strokeDasharray}
+            strokeDashoffset="25"
+            strokeLinecap="round"
+            transform="rotate(-90 18 18)"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span
+            className={`text-xl font-bold ${urgentTime ? "text-red-500 animate-pulse" : "text-foreground"}`}
+          >
+            {timeLeft}
+          </span>
+        </div>
+      </div>
+    );
   };
 
   const getCellClassName = (x: number, y: number) => {
@@ -155,12 +214,17 @@ export function Game({ gameState, myPlayerId }: GameProps) {
     if (gameState.status === GameStatus.PLACING_MINES) {
       if (myRole === PlayerRole.MAN) {
         return (
-          <Alert className="mb-4">
-            <AlertTitle className="flex items-center justify-between">
-              <span>Place your mines! Time left: {timeLeft}s</span>
-              <Badge>{minesToPlace} mines left</Badge>
-            </AlertTitle>
-            <AlertDescription>
+          <Alert className="mb-4 border-blue-500 bg-blue-500/10">
+            <div className="flex items-center justify-between">
+              <AlertTitle className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                <Target className="h-5 w-5" />
+                <span>Place your mines!</span>
+              </AlertTitle>
+              <Badge className="bg-blue-600 hover:bg-blue-700 transition-colors">
+                {minesToPlace} mines left
+              </Badge>
+            </div>
+            <AlertDescription className="mt-2">
               Click on the grid to place mines. If you don't place all mines in
               time, they will be placed randomly.
             </AlertDescription>
@@ -168,10 +232,15 @@ export function Game({ gameState, myPlayerId }: GameProps) {
         );
       } else {
         return (
-          <Alert className="mb-4">
-            <AlertTitle>Men are placing their mines</AlertTitle>
-            <AlertDescription>
-              Wait for men to place their mines. Time left: {timeLeft}s
+          <Alert className="mb-4 border-amber-500 bg-amber-500/10">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              <AlertTitle className="text-amber-600 dark:text-amber-400">
+                Men are placing their mines
+              </AlertTitle>
+            </div>
+            <AlertDescription className="mt-2">
+              Wait for men to place their mines.
             </AlertDescription>
           </Alert>
         );
@@ -179,18 +248,21 @@ export function Game({ gameState, myPlayerId }: GameProps) {
     } else if (gameState.status === GameStatus.PLAYING) {
       if (isMyTurn) {
         return (
-          <Alert className="mb-4">
-            <AlertTitle>Your turn!</AlertTitle>
-            <AlertDescription>
-              {myRole === PlayerRole.GORILLA
-                ? "Click on cells to reveal them. Avoid mines!"
-                : "Wait for your turn to place mines."}
+          <Alert className="mb-4 border-green-500 bg-green-500/10">
+            <div className="flex items-center gap-2">
+              <Crosshair className="h-5 w-5 text-green-600 dark:text-green-400 animate-pulse" />
+              <AlertTitle className="text-green-600 dark:text-green-400">
+                Your turn!
+              </AlertTitle>
+            </div>
+            <AlertDescription className="mt-2">
+              Click on cells to reveal them. Avoid mines!
             </AlertDescription>
           </Alert>
         );
       } else {
         return (
-          <Alert className="mb-4">
+          <Alert className="mb-4 border-gray-500 bg-gray-500/10">
             <AlertTitle>Waiting for other player</AlertTitle>
             <AlertDescription>
               {gameState.currentTurn
@@ -207,7 +279,7 @@ export function Game({ gameState, myPlayerId }: GameProps) {
 
   const renderGameContent = () => {
     return (
-      <div className="flex flex-col h-screen p-4 bg-background w-full">
+      <div className="flex flex-col h-screen p-4 bg-gradient-to-b from-background to-muted/50 w-full">
         <div className="flex justify-between items-center mb-4">
           <Button
             variant="outline"
@@ -216,35 +288,33 @@ export function Game({ gameState, myPlayerId }: GameProps) {
               Rune.actions.restartGame();
               router.navigate(Route.HOME);
             }}
-            className="flex items-center gap-1 text-foreground"
+            className="flex items-center gap-1 text-foreground hover:bg-muted/80 transition-colors"
           >
             <ChevronLeft className="h-4 w-4" />
             Back
           </Button>
-          <h1 className="text-lg font-bold text-foreground">Gorilla vs. Men</h1>
-          <div className="w-20" /> {/* Spacer for alignment */}
+          <h1 className="text-xl font-bold text-foreground">Gorilla vs. Men</h1>
+          <div className="w-20 flex justify-end">{renderTimer()}</div>
         </div>
 
         <div className="flex-grow flex flex-col items-center justify-center">
           {renderGameStatus()}
 
-          <div className="flex-1 grid grid-cols-10 gap-1 mb-4">
+          <div className="flex-1 grid grid-cols-10 gap-1 mb-4 max-w-md mx-auto w-full">
             {Array.from({ length: GRID_SIZE }).map((_, y) =>
               Array.from({ length: GRID_SIZE }).map((_, x) => {
                 const cell = gameState.grid[y][x];
                 const isAnimating = animation?.x === x && animation?.y === y;
-                const animationClass = isAnimating
-                  ? `animate-${animation.type}`
-                  : "";
 
                 let cellContent = "";
-                let cellClass = "bg-gray-200 dark:bg-gray-800";
+                let cellClass =
+                  "bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700";
 
                 if (cell.revealed) {
                   cellClass = "bg-gray-100 dark:bg-gray-700";
                   if (cell.hasMine) {
                     cellContent = "💣";
-                    cellClass = "bg-red-300 dark:bg-red-900";
+                    cellClass = "bg-red-300 dark:bg-red-900 animate-bounce";
                   }
                 } else if (
                   gameState.status === GameStatus.PLACING_MINES &&
@@ -253,17 +323,26 @@ export function Game({ gameState, myPlayerId }: GameProps) {
                   cell.mineOwnerId === myPlayerId
                 ) {
                   // Show my mines during placement phase
-                  cellContent = "🎯";
+                  cellContent = "💣";
                   cellClass = "bg-blue-200 dark:bg-blue-900";
+                }
+
+                if (isAnimating) {
+                  if (animation?.type === "mine-placed") {
+                    cellClass += " animate-ping-once";
+                  } else if (animation?.type === "explosion") {
+                    cellClass += " animate-explosion";
+                  } else if (animation?.type === "reveal") {
+                    cellClass += " animate-reveal";
+                  }
                 }
 
                 return (
                   <div
                     key={`${x}-${y}`}
                     className={cn(
-                      "w-full aspect-square flex items-center justify-center border border-gray-300 dark:border-gray-700 cursor-pointer text-xl transition-colors",
-                      cellClass,
-                      animationClass
+                      "w-full aspect-square flex items-center justify-center border border-gray-300 dark:border-gray-700 cursor-pointer text-xl transition-all shadow-sm hover:shadow-md",
+                      cellClass
                     )}
                     onClick={() => handleCellClick(x, y)}
                   >
@@ -274,19 +353,38 @@ export function Game({ gameState, myPlayerId }: GameProps) {
             )}
           </div>
 
-          <Card>
+          <Card className="w-full max-w-md shadow-lg border-t-4 border-t-primary">
             <CardHeader className="py-2">
-              <CardTitle className="text-sm">Game Info</CardTitle>
+              <CardTitle className="text-sm flex items-center justify-between">
+                <span>Game Progress</span>
+                <div className="flex items-center gap-2">
+                  <Bomb className="h-4 w-4 text-red-500" />
+                  <span className="text-xs text-muted-foreground">
+                    {Object.values(gameState.playerRoles).filter(
+                      (role) => role === PlayerRole.MAN
+                    ).length * MINES_PER_PLAYER}{" "}
+                    mines total
+                  </span>
+                </div>
+              </CardTitle>
             </CardHeader>
             <CardContent className="py-2">
+              <div className="w-full bg-muted rounded-full h-2.5 mb-2">
+                <div
+                  className="bg-primary h-2.5 rounded-full transition-all duration-500"
+                  style={{ width: `${revealedPercentage}%` }}
+                ></div>
+              </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <span className="text-muted-foreground">Revealed:</span>{" "}
-                  <Badge variant="outline">{gameState.revealedCount}</Badge>
+                  <Badge variant="outline" className="ml-1">
+                    {gameState.revealedCount}
+                  </Badge>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Status:</span>{" "}
-                  <Badge>{gameState.status}</Badge>
+                  <Badge className="ml-1 bg-primary">{gameState.status}</Badge>
                 </div>
               </div>
             </CardContent>
