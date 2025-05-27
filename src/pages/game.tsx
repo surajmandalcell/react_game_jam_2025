@@ -15,10 +15,82 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, Clock, Target, Bomb, Crosshair } from "lucide-react";
 import { Route, router } from "../router";
 
+// SVG patterns for cells
+const grassPattern = (
+  <svg
+    width="100%"
+    height="100%"
+    xmlns="http://www.w3.org/2000/svg"
+    className="absolute inset-0"
+  >
+    <defs>
+      <pattern
+        id="grass"
+        x="0"
+        y="0"
+        width="20"
+        height="20"
+        patternUnits="userSpaceOnUse"
+      >
+        <path d="M0,0 L20,0 L20,20 L0,20 Z" fill="#4ade80" />
+        <path d="M0,0 L5,0 L5,5 L0,5 Z" fill="#22c55e" />
+        <path d="M10,10 L15,10 L15,15 L10,15 Z" fill="#22c55e" />
+        <path d="M5,15 L10,15 L10,20 L5,20 Z" fill="#22c55e" />
+        <path d="M15,5 L20,5 L20,10 L15,10 Z" fill="#22c55e" />
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#grass)" />
+  </svg>
+);
+
+const dirtPattern = (
+  <svg
+    width="100%"
+    height="100%"
+    xmlns="http://www.w3.org/2000/svg"
+    className="absolute inset-0"
+  >
+    <defs>
+      <pattern
+        id="dirt"
+        x="0"
+        y="0"
+        width="20"
+        height="20"
+        patternUnits="userSpaceOnUse"
+      >
+        <rect width="20" height="20" fill="#92400e" />
+        <circle cx="5" cy="5" r="1" fill="#78350f" />
+        <circle cx="15" cy="15" r="1" fill="#78350f" />
+        <circle cx="10" cy="10" r="1" fill="#78350f" />
+        <circle cx="15" cy="5" r="1" fill="#78350f" />
+        <circle cx="5" cy="15" r="1" fill="#78350f" />
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#dirt)" />
+  </svg>
+);
+
 interface GameProps {
   gameState: GameState | null;
   myPlayerId: PlayerId | undefined;
 }
+
+// Helper function to format game status for display
+const formatGameStatus = (status: GameStatus): string => {
+  switch (status) {
+    case GameStatus.LOBBY:
+      return "Lobby";
+    case GameStatus.PLACING_MINES:
+      return "Placing Mines";
+    case GameStatus.PLAYING:
+      return "Playing";
+    case GameStatus.ENDED:
+      return "Game Over";
+    default:
+      return status;
+  }
+};
 
 export function Game({ gameState, myPlayerId }: GameProps) {
   const [animation, setAnimation] = useState<{
@@ -214,32 +286,34 @@ export function Game({ gameState, myPlayerId }: GameProps) {
     if (gameState.status === GameStatus.PLACING_MINES) {
       if (myRole === PlayerRole.MAN) {
         return (
-          <Alert className="mb-4 border-blue-500 bg-blue-500/10">
-            <div className="flex items-center justify-between">
-              <AlertTitle className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                <Target className="h-5 w-5" />
-                <span>Place your mines!</span>
-              </AlertTitle>
-              <Badge className="bg-blue-600 hover:bg-blue-700 transition-colors">
-                {minesToPlace} mines left
-              </Badge>
-            </div>
-            <AlertDescription className="mt-2">
-              Click on the grid to place mines. If you don't place all mines in
-              time, they will be placed randomly.
-            </AlertDescription>
-          </Alert>
+          <div className="relative mb-8 mt-4">
+            <Alert className="mb-4 border-blue-500 bg-blue-500/10">
+              <div className="flex items-center justify-between">
+                <AlertTitle className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                  <Target className="h-5 w-5" />
+                  <span>Place your mines!</span>
+                </AlertTitle>
+              </div>
+              <AlertDescription className="mt-2">
+                Click on the grid to place mines. If you don't place all mines
+                in time, they will be placed randomly.
+              </AlertDescription>
+            </Alert>
+            <Badge className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-blue-600 hover:bg-blue-700 transition-colors px-4 py-1 text-lg">
+              {minesToPlace} mines left
+            </Badge>
+          </div>
         );
       } else {
         return (
-          <Alert className="mb-4 border-amber-500 bg-amber-500/10">
+          <Alert className="mb-4 mt-4 border-amber-500 bg-amber-500/10 py-6">
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               <AlertTitle className="text-amber-600 dark:text-amber-400">
                 Men are placing their mines
               </AlertTitle>
             </div>
-            <AlertDescription className="mt-2">
+            <AlertDescription className="">
               Wait for men to place their mines.
             </AlertDescription>
           </Alert>
@@ -248,7 +322,7 @@ export function Game({ gameState, myPlayerId }: GameProps) {
     } else if (gameState.status === GameStatus.PLAYING) {
       if (isMyTurn) {
         return (
-          <Alert className="mb-4 border-green-500 bg-green-500/10">
+          <Alert className="mb-4 mt-4 border-green-500 bg-green-500/10">
             <div className="flex items-center gap-2">
               <Crosshair className="h-5 w-5 text-green-600 dark:text-green-400 animate-pulse" />
               <AlertTitle className="text-green-600 dark:text-green-400">
@@ -262,7 +336,7 @@ export function Game({ gameState, myPlayerId }: GameProps) {
         );
       } else {
         return (
-          <Alert className="mb-4 border-gray-500 bg-gray-500/10">
+          <Alert className="mb-4 mt-4 border-gray-500 bg-gray-500/10">
             <AlertTitle>Waiting for other player</AlertTitle>
             <AlertDescription>
               {gameState.currentTurn
@@ -278,6 +352,9 @@ export function Game({ gameState, myPlayerId }: GameProps) {
   };
 
   const renderGameContent = () => {
+    const isPlacingMines = gameState.status === GameStatus.PLACING_MINES;
+    const isPlaying = gameState.status === GameStatus.PLAYING;
+
     return (
       <div className="flex flex-col h-screen p-4 bg-gradient-to-b from-background to-muted/50 w-full">
         <div className="flex justify-between items-center mb-4">
@@ -300,15 +377,23 @@ export function Game({ gameState, myPlayerId }: GameProps) {
         <div className="flex-grow flex flex-col items-center justify-center">
           {renderGameStatus()}
 
-          <div className="flex-1 grid grid-cols-10 gap-1 mb-4 max-w-md mx-auto w-full">
+          <div className="flex-1 grid grid-cols-10 gap-0.5 mb-4 max-w-md mx-auto w-full min-w-full">
             {Array.from({ length: GRID_SIZE }).map((_, y) =>
               Array.from({ length: GRID_SIZE }).map((_, x) => {
                 const cell = gameState.grid[y][x];
                 const isAnimating = animation?.x === x && animation?.y === y;
 
                 let cellContent = "";
-                let cellClass =
-                  "bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700";
+                let cellClass = "relative overflow-hidden";
+
+                // Base class based on game state
+                if (isPlacingMines) {
+                  cellClass += " bg-amber-900"; // Dirt background for placing mines
+                } else if (isPlaying) {
+                  cellClass += " bg-green-600"; // Grass background for playing
+                } else {
+                  cellClass += " bg-gray-200 dark:bg-gray-800";
+                }
 
                 if (cell.revealed) {
                   cellClass = "bg-gray-100 dark:bg-gray-700";
@@ -324,7 +409,8 @@ export function Game({ gameState, myPlayerId }: GameProps) {
                 ) {
                   // Show my mines during placement phase
                   cellContent = "💣";
-                  cellClass = "bg-blue-200 dark:bg-blue-900";
+                  cellClass =
+                    "bg-blue-200 dark:bg-blue-900 relative overflow-hidden";
                 }
 
                 if (isAnimating) {
@@ -341,12 +427,17 @@ export function Game({ gameState, myPlayerId }: GameProps) {
                   <div
                     key={`${x}-${y}`}
                     className={cn(
-                      "w-full aspect-square flex items-center justify-center border border-gray-300 dark:border-gray-700 cursor-pointer text-xl transition-all shadow-sm hover:shadow-md",
+                      "w-full aspect-square flex items-center justify-center border border-gray-300/50 dark:border-gray-700/50 cursor-pointer text-xl transition-all shadow-sm hover:shadow-md relative overflow-hidden",
                       cellClass
                     )}
                     onClick={() => handleCellClick(x, y)}
                   >
-                    {cellContent}
+                    {!cell.revealed &&
+                      !cell.hasMine &&
+                      isPlaying &&
+                      grassPattern}
+                    {!cell.revealed && isPlacingMines && dirtPattern}
+                    <span className="z-10 relative">{cellContent}</span>
                   </div>
                 );
               })
@@ -375,16 +466,18 @@ export function Game({ gameState, myPlayerId }: GameProps) {
                   style={{ width: `${revealedPercentage}%` }}
                 ></div>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="grid grid-cols-2 gap-2 text-sm mt-4">
                 <div>
                   <span className="text-muted-foreground">Revealed:</span>{" "}
                   <Badge variant="outline" className="ml-1">
                     {gameState.revealedCount}
                   </Badge>
                 </div>
-                <div>
+                <div className="flex justify-end gap-2">
                   <span className="text-muted-foreground">Status:</span>{" "}
-                  <Badge className="ml-1 bg-primary">{gameState.status}</Badge>
+                  <Badge className="ml-1 bg-primary">
+                    {formatGameStatus(gameState.status)}
+                  </Badge>
                 </div>
               </div>
             </CardContent>
