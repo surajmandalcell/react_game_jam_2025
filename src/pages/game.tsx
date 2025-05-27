@@ -671,8 +671,8 @@ export function Game({ gameState, myPlayerId }: GameProps) {
                 // Base class based on game state
                 if (isPlacingMines) {
                   cellClass += " bg-amber-900"; // Dirt background for placing mines
-                } else if (isPlaying) {
-                  cellClass += " bg-green-600"; // Grass background for playing
+                } else if (isPlaying && !cell.revealed) {
+                  cellClass += " bg-green-600"; // Grass background for playing (all unrevealed cells)
                 } else {
                   cellClass += " bg-gray-200 dark:bg-gray-800";
                 }
@@ -712,10 +712,9 @@ export function Game({ gameState, myPlayerId }: GameProps) {
                     )}
                     onClick={() => handleCellClick(x, y)}
                   >
-                    {!cell.revealed &&
-                      !cell.hasMine &&
-                      isPlaying &&
-                      grassPattern}
+                    {/* Show grass pattern on all unrevealed cells during PLAYING state */}
+                    {!cell.revealed && isPlaying && grassPattern}
+                    {/* Show dirt pattern during PLACING_MINES state */}
                     {!cell.revealed && isPlacingMines && dirtPattern}
                     <span className="z-10 relative">
                       {/* Show mines during placement phase for the mine owner */}
