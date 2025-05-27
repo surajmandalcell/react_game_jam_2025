@@ -32,13 +32,6 @@ export class Router {
   }
 
   public navigate(route: Route): void {
-    if (
-      (route === Route.GAME && this.currentRoute !== Route.LOBBY) ||
-      (route === Route.END && this.currentRoute !== Route.GAME)
-    ) {
-      route = Route.HOME;
-    }
-
     this.currentRoute = route;
     localStorage.setItem("currentRoute", route);
 

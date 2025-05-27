@@ -86,20 +86,26 @@ function initRuneClient(): void {
         );
       }
 
-      if (
-        game.status === GameStatus.LOBBY &&
-        router.getCurrentRoute() !== Route.LOBBY
-      ) {
+      // Store the current route before potentially changing it
+      const currentRoute = router.getCurrentRoute();
+
+      // Don't override navigation if user is on HOME or SETTINGS pages
+      if (currentRoute === Route.HOME || currentRoute === Route.SETTINGS) {
+        return;
+      }
+
+      // Only auto-navigate if the game state doesn't match the current route
+      if (game.status === GameStatus.LOBBY && currentRoute !== Route.LOBBY) {
         router.navigate(Route.LOBBY);
       } else if (
         (game.status === GameStatus.PLAYING ||
           game.status === GameStatus.PLACING_MINES) &&
-        router.getCurrentRoute() !== Route.GAME
+        currentRoute !== Route.GAME
       ) {
         router.navigate(Route.GAME);
       } else if (
         game.status === GameStatus.ENDED &&
-        router.getCurrentRoute() !== Route.END
+        currentRoute !== Route.END
       ) {
         router.navigate(Route.END);
       }
