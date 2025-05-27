@@ -23,7 +23,7 @@ export class Router {
     if (savedRoute && Object.values(Route).includes(savedRoute as Route)) {
       this.currentRoute = savedRoute as Route;
     } else {
-      this.currentRoute = Route.HOME;
+      this.currentRoute = Route.LOBBY;
     }
   }
 

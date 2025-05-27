@@ -72,6 +72,10 @@ const App: React.FC = () => {
 function initRuneClient(): void {
   Rune.initClient({
     onChange: ({ game, yourPlayerId }) => {
+      // Store previous game state for comparison
+      const prevGameState = gameState;
+
+      // Update game state and player ID
       gameState = game;
       myPlayerId = yourPlayerId;
 
@@ -89,25 +93,48 @@ function initRuneClient(): void {
       // Store the current route before potentially changing it
       const currentRoute = router.getCurrentRoute();
 
-      // Don't override navigation if user is on HOME or SETTINGS pages
-      if (currentRoute === Route.HOME || currentRoute === Route.SETTINGS) {
-        return;
-      }
+      // Track if this is the first load
+      const isFirstLoad = !prevGameState;
 
-      // Only auto-navigate if the game state doesn't match the current route
-      if (game.status === GameStatus.LOBBY && currentRoute !== Route.LOBBY) {
-        router.navigate(Route.LOBBY);
+      // Detect game state transitions
+      const gameStarting =
+        prevGameState?.status === GameStatus.LOBBY &&
+        (game.status === GameStatus.PLACING_MINES ||
+          game.status === GameStatus.PLAYING);
+
+      const gameEnding =
+        prevGameState?.status !== GameStatus.ENDED &&
+        game.status === GameStatus.ENDED;
+
+      // Handle navigation based on game state changes
+      if (isFirstLoad) {
+        // Initial navigation based on game state
+        if (game.status === GameStatus.LOBBY && currentRoute !== Route.LOBBY) {
+          router.navigate(Route.LOBBY);
+        } else if (
+          (game.status === GameStatus.PLAYING ||
+            game.status === GameStatus.PLACING_MINES) &&
+          currentRoute !== Route.GAME
+        ) {
+          router.navigate(Route.GAME);
+        } else if (
+          game.status === GameStatus.ENDED &&
+          currentRoute !== Route.END
+        ) {
+          router.navigate(Route.END);
+        }
       } else if (
-        (game.status === GameStatus.PLAYING ||
-          game.status === GameStatus.PLACING_MINES) &&
-        currentRoute !== Route.GAME
+        // Always navigate on these critical state changes
+        gameStarting ||
+        gameEnding
       ) {
-        router.navigate(Route.GAME);
-      } else if (
-        game.status === GameStatus.ENDED &&
-        currentRoute !== Route.END
-      ) {
-        router.navigate(Route.END);
+        if (gameStarting) {
+          console.log("Game starting - navigating to game screen");
+          router.navigate(Route.GAME);
+        } else if (gameEnding) {
+          console.log("Game ending - navigating to end screen");
+          router.navigate(Route.END);
+        }
       }
     },
   });
@@ -115,6 +142,13 @@ function initRuneClient(): void {
 
 function init(): void {
   initUI();
+
+  // Set default route to LOBBY on first load
+  const isFirstLoad = !localStorage.getItem("hasVisited");
+  if (isFirstLoad) {
+    router.navigate(Route.LOBBY);
+    localStorage.setItem("hasVisited", "true");
+  }
 
   const rootElement = document.getElementById("root");
   if (rootElement) {

@@ -359,8 +359,9 @@ export function Game({ gameState, myPlayerId }: GameProps) {
 
     // Calculate percentage for circular timer
     const maxTime = 10; // 10 seconds total
-    const percentage = (timeLeft / maxTime) * 100;
-    const strokeDasharray = `${percentage} 100`;
+    const remainingPercentage = (timeLeft / maxTime) * 100;
+    const circumference = 2 * Math.PI * 16; // 2πr where r=16
+    const dashOffset = ((100 - remainingPercentage) / 100) * circumference;
     const urgentTime = timeLeft <= 3;
 
     return (
@@ -385,8 +386,8 @@ export function Game({ gameState, myPlayerId }: GameProps) {
             stroke="currentColor"
             className={`${urgentTime ? "text-red-500 animate-pulse" : "text-primary"}`}
             strokeWidth="2"
-            strokeDasharray={strokeDasharray}
-            strokeDashoffset="25"
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
             strokeLinecap="round"
             transform="rotate(-90 18 18)"
           />
