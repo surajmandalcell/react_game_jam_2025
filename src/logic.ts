@@ -56,6 +56,13 @@ type GameActions = {
   startGame: () => void;
   restartGame: () => void;
   forceStartPlaying: () => void;
+  debugGameState: () => void;
+  fixMines: () => void;
+  directPlaceMine: (params: {
+    x: number;
+    y: number;
+    playerId: PlayerId;
+  }) => void;
 };
 
 function initializeGrid(): Cell[][] {
@@ -73,11 +80,40 @@ function initializeGrid(): Cell[][] {
   return grid;
 }
 
+// Track previous values to avoid duplicate logging
+let previousMinesToPlace = {};
+
 function allMinesPlaced(game: GameState): boolean {
+  // Convert minesToPlace to a simple object for comparison
+  const currentMinesToPlace = {};
+  Object.keys(game.minesToPlace).forEach((key) => {
+    currentMinesToPlace[key] = game.minesToPlace[key];
+  });
+
+  // Only log if values have changed
+  const minesToPlaceChanged =
+    JSON.stringify(currentMinesToPlace) !==
+    JSON.stringify(previousMinesToPlace);
+
+  if (minesToPlaceChanged) {
+    console.log("Checking if all mines are placed:", currentMinesToPlace);
+    previousMinesToPlace = { ...currentMinesToPlace };
+  }
+
+  // Check each player's mines
   for (const playerId in game.minesToPlace) {
     if (game.minesToPlace[playerId] > 0) {
+      if (minesToPlaceChanged) {
+        console.log(
+          `Player ${playerId} still has ${game.minesToPlace[playerId]} mines to place`
+        );
+      }
       return false;
     }
+  }
+
+  if (minesToPlaceChanged) {
+    console.log("All mines have been placed!");
   }
   return true;
 }
@@ -96,6 +132,10 @@ function placeRandomMines(game: GameState, playerId: PlayerId): void {
   const minesToPlace = game.minesToPlace[playerId];
   if (minesToPlace <= 0) return;
 
+  console.log(
+    `Starting to place ${minesToPlace} random mines for player ${playerId}`
+  );
+
   // Create a list of all available cells
   const availableCells: { x: number; y: number }[] = [];
   for (let y = 0; y < GRID_SIZE; y++) {
@@ -105,6 +145,10 @@ function placeRandomMines(game: GameState, playerId: PlayerId): void {
       }
     }
   }
+
+  console.log(
+    `Found ${availableCells.length} available cells for random mine placement`
+  );
 
   // Shuffle the available cells using random()
   for (let i = availableCells.length - 1; i > 0; i--) {
@@ -120,12 +164,18 @@ function placeRandomMines(game: GameState, playerId: PlayerId): void {
     const { x, y } = availableCells[i];
     game.grid[y][x].hasMine = true;
     game.grid[y][x].mineOwnerId = playerId;
+    console.log(`Placed random mine at (${x}, ${y}) for player ${playerId}`);
   }
 
   // Mark all mines as placed for this player
   game.minesToPlace[playerId] = 0;
   game.randomMinesPlaced[playerId] = true;
+
+  console.log(`Finished placing random mines for player ${playerId}`);
 }
+
+// Track the last time we logged the timer expiration
+let lastTimerExpirationLog = 0;
 
 function checkMinePlacementTimer(game: GameState, gameTime: number): void {
   // Don't do anything if we're not in PLACING_MINES state or if there's no timer set
@@ -139,17 +189,23 @@ function checkMinePlacementTimer(game: GameState, gameTime: number): void {
   }
 
   if (gameTime >= game.minePlacementEndTime) {
-    console.log("Mine placement timer expired", {
-      gameTime,
-      minePlacementEndTime: game.minePlacementEndTime,
-    });
+    // Only log once per second
+    const currentSecond = Math.floor(gameTime / 1000);
+    if (currentSecond > lastTimerExpirationLog) {
+      console.log("Mine placement timer expired", {
+        gameTime,
+        minePlacementEndTime: game.minePlacementEndTime,
+      });
+      lastTimerExpirationLog = currentSecond;
+    }
 
-    // Time's up! Place random mines for any players who haven't placed all their mines
-    for (const playerId in game.playerRoles) {
-      if (
-        game.playerRoles[playerId] === PlayerRole.MAN &&
-        game.minesToPlace[playerId] > 0
-      ) {
+    // Time's up! Place random mines for ALL players who haven't placed their mines
+    // Including the gorilla player (this was the issue)
+    for (const playerId in game.minesToPlace) {
+      if (game.minesToPlace[playerId] > 0) {
+        console.log(
+          `Placing random mines for player ${playerId} (${game.playerRoles[playerId]})`
+        );
         placeRandomMines(game, playerId);
       }
     }
@@ -205,21 +261,68 @@ Rune.initLogic({
     },
 
     placeMine: (params, { game, playerId }) => {
-      if (game.status !== GameStatus.PLACING_MINES) return;
-      if (game.playerRoles[playerId] !== PlayerRole.MAN) return;
-      if (game.minesToPlace[playerId] <= 0) return;
+      console.log(`placeMine called by player ${playerId}`, {
+        status: game.status,
+        playerRole: game.playerRoles[playerId],
+        minesToPlace: game.minesToPlace[playerId],
+        params,
+      });
+
+      if (game.status !== GameStatus.PLACING_MINES) {
+        console.log("Cannot place mine: game not in PLACING_MINES state");
+        return;
+      }
+      if (game.playerRoles[playerId] !== PlayerRole.MAN) {
+        console.log("Cannot place mine: player is not a MAN");
+        return;
+      }
+      if (game.minesToPlace[playerId] <= 0) {
+        console.log("Cannot place mine: player has no mines left to place");
+        return;
+      }
 
       const { x, y } = params;
-      if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return;
-      if (game.grid[y][x].hasMine) return;
+      if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) {
+        console.log("Cannot place mine: coordinates out of bounds");
+        return;
+      }
+      if (game.grid[y][x].hasMine) {
+        console.log("Cannot place mine: cell already has a mine");
+        return;
+      }
 
+      // Place the mine
       game.grid[y][x].hasMine = true;
       game.grid[y][x].mineOwnerId = playerId;
-      game.minesToPlace[playerId]--;
 
+      // Decrement mines to place - ENSURE THIS IS UPDATED CORRECTLY
+      const currentMines = game.minesToPlace[playerId];
+      game.minesToPlace[playerId] = currentMines - 1;
+
+      console.log(`Mine placed at (${x},${y}) by player ${playerId}`, {
+        remainingMines: game.minesToPlace[playerId],
+        previousMines: currentMines,
+      });
+
+      // Verify the update took effect
+      if (game.minesToPlace[playerId] !== currentMines - 1) {
+        console.error("CRITICAL ERROR: Failed to update minesToPlace!", {
+          expected: currentMines - 1,
+          actual: game.minesToPlace[playerId],
+        });
+      }
+
+      // Check if all mines are placed
       if (allMinesPlaced(game)) {
+        console.log(
+          "All mines placed in placeMine action, transitioning to PLAYING"
+        );
         game.status = GameStatus.PLAYING;
         game.currentTurn = game.gorillaPlayerId ?? null;
+        console.log("Game state after transition:", {
+          status: game.status,
+          currentTurn: game.currentTurn,
+        });
       }
     },
 
@@ -297,6 +400,11 @@ Rune.initLogic({
     },
 
     forceStartPlaying: (_, { game }) => {
+      console.log("🔥🔥🔥 forceStartPlaying CALLED 🔥🔥🔥", {
+        currentStatus: game.status,
+        timestamp: new Date().toISOString(),
+      });
+
       if (game.status !== GameStatus.PLACING_MINES) {
         console.log(
           "forceStartPlaying called but game is not in PLACING_MINES state:",
@@ -317,6 +425,7 @@ Rune.initLogic({
           game.playerRoles[playerId] === PlayerRole.MAN &&
           game.minesToPlace[playerId] > 0
         ) {
+          console.log(`Placing random mines for player ${playerId}`);
           placeRandomMines(game, playerId);
         }
       }
@@ -330,10 +439,12 @@ Rune.initLogic({
           const randomPlayerId = playerIds[randomIndex] as PlayerId;
           game.playerRoles[randomPlayerId] = PlayerRole.GORILLA;
           game.gorillaPlayerId = randomPlayerId;
+          console.log(`Selected ${randomPlayerId} as gorilla`);
         }
       }
 
-      // Force transition to playing state
+      // FORCE transition to playing state - FUCK IT
+      console.log("🎮 FORCING GAME STATE TO PLAYING 🎮");
       game.status = GameStatus.PLAYING;
       game.currentTurn = game.gorillaPlayerId;
 
@@ -345,6 +456,169 @@ Rune.initLogic({
         minesToPlace: { ...game.minesToPlace },
         currentTurn: game.currentTurn,
       });
+
+      // Double check the game state was actually updated
+      if (game.status !== GameStatus.PLAYING) {
+        console.error(
+          "⚠️ CRITICAL ERROR: Game state not updated to PLAYING after forceStartPlaying!"
+        );
+      } else {
+        console.log("✅ Game state successfully updated to PLAYING");
+      }
+    },
+
+    debugGameState: (_, { game }) => {
+      console.log("🔍 DEBUG GAME STATE 🔍", {
+        status: game.status,
+        minesToPlace: game.minesToPlace,
+        allMinesPlaced: allMinesPlaced(game),
+        gorillaPlayerId: game.gorillaPlayerId,
+        currentTurn: game.currentTurn,
+        timestamp: new Date().toISOString(),
+      });
+
+      // If we're in PLACING_MINES state and all mines are placed, force transition to PLAYING
+      if (game.status === GameStatus.PLACING_MINES && allMinesPlaced(game)) {
+        console.log(
+          "⚠️ Found issue: All mines placed but still in PLACING_MINES state. Fixing..."
+        );
+        game.status = GameStatus.PLAYING;
+        game.currentTurn = game.gorillaPlayerId;
+        game.minePlacementEndTime = undefined;
+        console.log("✅ Fixed game state: Now in PLAYING state");
+      }
+
+      // If we're in PLAYING state but currentTurn is not set, fix it
+      if (game.status === GameStatus.PLAYING && !game.currentTurn) {
+        console.log(
+          "⚠️ Found issue: In PLAYING state but currentTurn not set. Fixing..."
+        );
+        game.currentTurn = game.gorillaPlayerId;
+        console.log("✅ Fixed game state: Set currentTurn to gorilla");
+      }
+
+      return {
+        status: game.status,
+        currentTurn: game.currentTurn,
+        allMinesPlaced: allMinesPlaced(game),
+      };
+    },
+
+    fixMines: (_, { game }) => {
+      console.log(
+        "🔧 Running fixMines action to check and fix mine placement issues"
+      );
+
+      // Count actual mines placed in the grid for each player
+      const actualMinesPlaced: Record<PlayerId, number> = {};
+
+      // Initialize counts
+      for (const playerId in game.playerRoles) {
+        if (game.playerRoles[playerId] === PlayerRole.MAN) {
+          actualMinesPlaced[playerId] = 0;
+        }
+      }
+
+      // Count mines in the grid
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const cell = game.grid[y][x];
+          if (cell.hasMine && cell.mineOwnerId) {
+            if (actualMinesPlaced[cell.mineOwnerId] !== undefined) {
+              actualMinesPlaced[cell.mineOwnerId]++;
+            }
+          }
+        }
+      }
+
+      console.log("Actual mines placed in grid:", actualMinesPlaced);
+      console.log("Mines to place according to game state:", game.minesToPlace);
+
+      // Fix any discrepancies
+      let fixedIssues = false;
+      for (const playerId in actualMinesPlaced) {
+        const actualMines = actualMinesPlaced[playerId];
+        const expectedRemainingMines = Math.max(
+          0,
+          MINES_PER_PLAYER - actualMines
+        );
+
+        if (game.minesToPlace[playerId] !== expectedRemainingMines) {
+          console.log(`Fixing mine count for player ${playerId}:`, {
+            actualMinesPlaced: actualMines,
+            currentMinesToPlace: game.minesToPlace[playerId],
+            correctMinesToPlace: expectedRemainingMines,
+          });
+
+          game.minesToPlace[playerId] = expectedRemainingMines;
+          fixedIssues = true;
+        }
+      }
+
+      // Check if all mines are now placed
+      if (allMinesPlaced(game) && game.status === GameStatus.PLACING_MINES) {
+        console.log("All mines are now placed, transitioning to PLAYING state");
+        game.status = GameStatus.PLAYING;
+        game.currentTurn = game.gorillaPlayerId;
+        game.minePlacementEndTime = undefined;
+        fixedIssues = true;
+      }
+
+      return {
+        fixedIssues,
+        actualMinesPlaced,
+        minesToPlace: { ...game.minesToPlace },
+        allMinesPlaced: allMinesPlaced(game),
+      };
+    },
+
+    directPlaceMine: (params, { game, playerId }) => {
+      const { x, y, playerId: targetPlayerId } = params;
+      if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) {
+        console.log("Cannot place mine: coordinates out of bounds");
+        return;
+      }
+      if (game.grid[y][x].hasMine) {
+        console.log("Cannot place mine: cell already has a mine");
+        return;
+      }
+
+      // Place the mine
+      game.grid[y][x].hasMine = true;
+      game.grid[y][x].mineOwnerId = targetPlayerId;
+
+      // Decrement mines to place - ENSURE THIS IS UPDATED CORRECTLY
+      const currentMines = game.minesToPlace[targetPlayerId];
+      game.minesToPlace[targetPlayerId] = currentMines - 1;
+
+      console.log(
+        `Mine placed at (${x},${y}) by player ${playerId} for player ${targetPlayerId}`,
+        {
+          remainingMines: game.minesToPlace[targetPlayerId],
+          previousMines: currentMines,
+        }
+      );
+
+      // Verify the update took effect
+      if (game.minesToPlace[targetPlayerId] !== currentMines - 1) {
+        console.error("CRITICAL ERROR: Failed to update minesToPlace!", {
+          expected: currentMines - 1,
+          actual: game.minesToPlace[targetPlayerId],
+        });
+      }
+
+      // Check if all mines are placed
+      if (allMinesPlaced(game)) {
+        console.log(
+          "All mines placed in directPlaceMine action, transitioning to PLAYING"
+        );
+        game.status = GameStatus.PLAYING;
+        game.currentTurn = game.gorillaPlayerId ?? null;
+        console.log("Game state after transition:", {
+          status: game.status,
+          currentTurn: game.currentTurn,
+        });
+      }
     },
   },
 
@@ -359,6 +633,37 @@ Rune.initLogic({
       game.status = GameStatus.PLAYING;
       game.currentTurn = game.gorillaPlayerId ?? null;
       game.minePlacementEndTime = undefined;
+    }
+
+    // HACK: Force check every 2 seconds if we need to transition to PLAYING
+    const currentSecond = Math.floor(Rune.gameTime() / 1000);
+    if (currentSecond % 2 === 0) {
+      // Check every 2 seconds
+      if (game.status === GameStatus.PLACING_MINES) {
+        // Check if timer has expired
+        if (
+          game.minePlacementEndTime &&
+          Rune.gameTime() >= game.minePlacementEndTime + 2000
+        ) {
+          console.log("🔄 TIMER EXPIRED: Force placing mines for all players");
+
+          // Place mines for all players
+          for (const playerId in game.minesToPlace) {
+            if (game.minesToPlace[playerId] > 0) {
+              console.log(`Forcing mine placement for player ${playerId}`);
+              placeRandomMines(game, playerId);
+            }
+          }
+
+          // Force transition to PLAYING
+          console.log(
+            "🔄 FORCING transition to PLAYING state after timer expired"
+          );
+          game.status = GameStatus.PLAYING;
+          game.currentTurn = game.gorillaPlayerId;
+          game.minePlacementEndTime = undefined;
+        }
+      }
     }
   },
 

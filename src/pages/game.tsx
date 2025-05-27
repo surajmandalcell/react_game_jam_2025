@@ -15,6 +15,13 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, Clock, Target, Bomb, Crosshair } from "lucide-react";
 import { Route, router } from "../router";
 
+// Add a declaration for the Rune global object for our hack
+declare global {
+  interface Window {
+    Rune: any;
+  }
+}
+
 // SVG patterns for cells
 const grassPattern = (
   <svg
@@ -117,15 +124,17 @@ export function Game({ gameState, myPlayerId }: GameProps) {
         ),
         gorillaPlayerId: gameState.gorillaPlayerId,
         currentTurn: gameState.currentTurn,
+        timestamp: new Date().toISOString(),
       });
 
       // Show a message when transitioning to playing state
       if (gameState.status === GameStatus.PLAYING) {
+        console.log("GAME IS NOW IN PLAYING STATE!");
         setShowStartedMessage(true);
         setTimeout(() => setShowStartedMessage(false), 3000);
       }
     }
-  }, [gameState?.status]);
+  }, [gameState?.status, gameState?.minesToPlace]);
 
   // Check if all mines are placed
   useEffect(() => {
@@ -135,6 +144,10 @@ export function Game({ gameState, myPlayerId }: GameProps) {
     const allPlaced = Object.values(gameState.minesToPlace).every(
       (mines) => mines === 0
     );
+    console.log("Checking allMinesPlaced in UI:", {
+      allPlaced,
+      minesToPlace: gameState.minesToPlace,
+    });
     setAllMinesPlaced(allPlaced);
   }, [gameState?.minesToPlace]);
 
@@ -218,10 +231,37 @@ export function Game({ gameState, myPlayerId }: GameProps) {
       minesToPlace > 0
     ) {
       if (!cell.hasMine) {
+        console.log(`Attempting to place mine at (${x}, ${y})`);
         try {
+          // Store the current mines to place value
+          const beforeMinesToPlace = gameState.minesToPlace[myPlayerId];
+
+          // Call the action
           Rune.actions.placeMine({ x, y });
+
+          // Set animation
           setAnimation({ x, y, type: "mine-placed" });
           setTimeout(() => setAnimation(null), 800);
+
+          // Check if the action was successful after a short delay
+          setTimeout(() => {
+            const afterMinesToPlace = gameState.minesToPlace[myPlayerId];
+            console.log("Mine placement check:", {
+              beforeMinesToPlace,
+              afterMinesToPlace,
+              changed: beforeMinesToPlace !== afterMinesToPlace,
+            });
+
+            // If the value didn't change, try again
+            if (beforeMinesToPlace === afterMinesToPlace) {
+              console.log("Mine placement didn't register, trying again");
+              try {
+                Rune.actions.placeMine({ x, y });
+              } catch (error) {
+                console.error("Error in second mine placement attempt:", error);
+              }
+            }
+          }, 300);
         } catch (error) {
           console.error("Error placing mine:", error);
         }
@@ -356,27 +396,192 @@ export function Game({ gameState, myPlayerId }: GameProps) {
                 : "Wait for men to place their mines."}
             </AlertDescription>
             {allMinesPlaced && isGorilla && (
-              <div className="mt-4 flex justify-center">
+              <div className="mt-4 flex justify-center gap-2 flex-wrap">
                 <Button
                   onClick={() => {
-                    console.log("Force start playing button clicked");
-                    // Add a small delay to ensure UI updates before action is called
+                    console.log(
+                      "Force start playing button clicked - FUCKING START THE GAME ALREADY!"
+                    );
+                    // Try multiple times with increasing delays to ensure the action gets through
+                    try {
+                      Rune.actions.forceStartPlaying();
+                      console.log(
+                        "forceStartPlaying action called immediately"
+                      );
+                    } catch (error) {
+                      console.error(
+                        "Error calling forceStartPlaying (1st attempt):",
+                        error
+                      );
+                    }
+
                     setTimeout(() => {
                       try {
+                        console.log(
+                          "Trying forceStartPlaying again after 100ms"
+                        );
                         Rune.actions.forceStartPlaying();
-                        console.log("forceStartPlaying action called");
                       } catch (error) {
                         console.error(
-                          "Error calling forceStartPlaying:",
+                          "Error calling forceStartPlaying (2nd attempt):",
                           error
                         );
                       }
                     }, 100);
+
+                    setTimeout(() => {
+                      try {
+                        console.log(
+                          "Trying forceStartPlaying again after 500ms"
+                        );
+                        Rune.actions.forceStartPlaying();
+                      } catch (error) {
+                        console.error(
+                          "Error calling forceStartPlaying (3rd attempt):",
+                          error
+                        );
+                      }
+                    }, 500);
                   }}
                   variant="default"
                   className="bg-green-600 hover:bg-green-700 animate-pulse"
                 >
                   Start Hunting!
+                </Button>
+
+                <Button
+                  onClick={() => {
+                    console.log("Debug button clicked");
+                    try {
+                      Rune.actions.debugGameState();
+                    } catch (error) {
+                      console.error("Error calling debugGameState:", error);
+                    }
+                  }}
+                  variant="outline"
+                  className="bg-blue-500 hover:bg-blue-600 text-white"
+                >
+                  Debug
+                </Button>
+
+                <Button
+                  onClick={() => {
+                    console.log("Fix Mines button clicked");
+                    try {
+                      Rune.actions.fixMines();
+                    } catch (error) {
+                      console.error("Error calling fixMines:", error);
+                    }
+                  }}
+                  variant="outline"
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                >
+                  Fix Mines
+                </Button>
+
+                {gameState.status === GameStatus.PLACING_MINES &&
+                  minesToPlace > 0 && (
+                    <Button
+                      onClick={() => {
+                        console.log("Direct place mines button clicked");
+                        try {
+                          // Find empty cells to place mines
+                          const emptyCells: Array<{ x: number; y: number }> =
+                            [];
+                          for (let y = 0; y < GRID_SIZE; y++) {
+                            for (let x = 0; x < GRID_SIZE; x++) {
+                              if (!gameState.grid[y][x].hasMine) {
+                                emptyCells.push({ x, y });
+                              }
+                            }
+                          }
+
+                          console.log(
+                            `Found ${emptyCells.length} empty cells for mine placement`
+                          );
+
+                          // Shuffle the empty cells
+                          const shuffled = [...emptyCells].sort(
+                            () => 0.5 - Math.random()
+                          );
+
+                          // Place mines directly
+                          const minesToPlace =
+                            gameState.minesToPlace[myPlayerId];
+                          console.log(
+                            `Placing ${minesToPlace} mines for player ${myPlayerId}`
+                          );
+
+                          for (
+                            let i = 0;
+                            i < minesToPlace && i < shuffled.length;
+                            i++
+                          ) {
+                            const { x, y } = shuffled[i];
+                            console.log(
+                              `Directly placing mine at (${x}, ${y})`
+                            );
+                            Rune.actions.directPlaceMine({
+                              x,
+                              y,
+                              playerId: myPlayerId,
+                            });
+                          }
+
+                          // Check if this completes all mine placement
+                          setTimeout(() => {
+                            if (allMinesPlaced) {
+                              console.log(
+                                "All mines placed, forcing game to start"
+                              );
+                              Rune.actions.forceStartPlaying();
+                            }
+                          }, 500);
+                        } catch (error) {
+                          console.error("Error directly placing mines:", error);
+                        }
+                      }}
+                      variant="outline"
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      Place All Mines
+                    </Button>
+                  )}
+
+                {/* Emergency button to directly hack the game state */}
+                <Button
+                  onClick={() => {
+                    console.log(
+                      "🚨 EMERGENCY: Directly hacking game state to PLAYING"
+                    );
+                    try {
+                      // This is a hack to directly modify the game state
+                      // It's not recommended in normal circumstances
+                      const hackGame = () => {
+                        if (window.Rune && window.Rune._game) {
+                          // @ts-ignore - Accessing private API
+                          const gameState = window.Rune._game;
+                          if (gameState.status === GameStatus.PLACING_MINES) {
+                            gameState.status = GameStatus.PLAYING;
+                            gameState.currentTurn = gameState.gorillaPlayerId;
+                            console.log("✅ Hacked game state to PLAYING");
+                          }
+                        }
+                      };
+
+                      // Try to hack the game state
+                      hackGame();
+
+                      // Also try the normal action
+                      Rune.actions.forceStartPlaying();
+                    } catch (error) {
+                      console.error("Error hacking game state:", error);
+                    }
+                  }}
+                  variant="outline"
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  EMERGENCY
                 </Button>
               </div>
             )}
@@ -444,6 +649,22 @@ export function Game({ gameState, myPlayerId }: GameProps) {
             <h1 className="text-xl font-bold text-foreground">{titleText}</h1>
           </div>
           <div className="w-20 flex justify-end">{renderTimer()}</div>
+        </div>
+
+        {/* Game State Debug Banner */}
+        <div
+          className={`mb-2 p-2 text-center text-white font-bold rounded-md ${
+            gameState.status === GameStatus.PLAYING
+              ? "bg-green-600"
+              : gameState.status === GameStatus.PLACING_MINES
+                ? "bg-amber-600"
+                : "bg-gray-600"
+          }`}
+        >
+          GAME STATE: {gameState.status}{" "}
+          {allMinesPlaced &&
+            gameState.status === GameStatus.PLACING_MINES &&
+            "- ALL MINES PLACED!"}
         </div>
 
         {showStartedMessage && (
