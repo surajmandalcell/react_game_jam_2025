@@ -99,10 +99,44 @@ export function Game({ gameState, myPlayerId }: GameProps) {
     type: string;
   } | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [allMinesPlaced, setAllMinesPlaced] = useState<boolean>(false);
+  const [showStartedMessage, setShowStartedMessage] = useState<boolean>(false);
 
   useEffect(() => {
     document.title = "Gorilla vs Men - Game";
   }, []);
+
+  // Log game state changes
+  useEffect(() => {
+    if (gameState) {
+      console.log("Game state updated:", {
+        status: gameState.status,
+        minesToPlace: gameState.minesToPlace,
+        allMinesPlaced: Object.values(gameState.minesToPlace).every(
+          (mines) => mines === 0
+        ),
+        gorillaPlayerId: gameState.gorillaPlayerId,
+        currentTurn: gameState.currentTurn,
+      });
+
+      // Show a message when transitioning to playing state
+      if (gameState.status === GameStatus.PLAYING) {
+        setShowStartedMessage(true);
+        setTimeout(() => setShowStartedMessage(false), 3000);
+      }
+    }
+  }, [gameState?.status]);
+
+  // Check if all mines are placed
+  useEffect(() => {
+    if (!gameState) return;
+
+    // Check if all players have placed their mines
+    const allPlaced = Object.values(gameState.minesToPlace).every(
+      (mines) => mines === 0
+    );
+    setAllMinesPlaced(allPlaced);
+  }, [gameState?.minesToPlace]);
 
   // Update the timer for mine placement
   useEffect(() => {
@@ -305,17 +339,47 @@ export function Game({ gameState, myPlayerId }: GameProps) {
           </div>
         );
       } else {
+        // For gorilla, check if all mines are placed and show appropriate message
         return (
           <Alert className="mb-4 mt-4 border-amber-500 bg-amber-500/10 py-6">
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               <AlertTitle className="text-amber-600 dark:text-amber-400">
-                Men are placing their mines
+                {allMinesPlaced
+                  ? "All mines placed!"
+                  : "Men are placing their mines"}
               </AlertTitle>
             </div>
             <AlertDescription className="">
-              Wait for men to place their mines.
+              {allMinesPlaced
+                ? "Game will start shortly..."
+                : "Wait for men to place their mines."}
             </AlertDescription>
+            {allMinesPlaced && isGorilla && (
+              <div className="mt-4 flex justify-center">
+                <Button
+                  onClick={() => {
+                    console.log("Force start playing button clicked");
+                    // Add a small delay to ensure UI updates before action is called
+                    setTimeout(() => {
+                      try {
+                        Rune.actions.forceStartPlaying();
+                        console.log("forceStartPlaying action called");
+                      } catch (error) {
+                        console.error(
+                          "Error calling forceStartPlaying:",
+                          error
+                        );
+                      }
+                    }, 100);
+                  }}
+                  variant="default"
+                  className="bg-green-600 hover:bg-green-700 animate-pulse"
+                >
+                  Start Hunting!
+                </Button>
+              </div>
+            )}
           </Alert>
         );
       }
@@ -325,23 +389,24 @@ export function Game({ gameState, myPlayerId }: GameProps) {
           <Alert className="mb-4 mt-4 border-green-500 bg-green-500/10">
             <div className="flex items-center gap-2">
               <Crosshair className="h-5 w-5 text-green-600 dark:text-green-400 animate-pulse" />
-              <AlertTitle className="text-green-600 dark:text-green-400">
-                Your turn!
+              <AlertTitle className="text-green-600 dark:text-green-400 text-lg">
+                Your turn! Hunt for men!
               </AlertTitle>
             </div>
             <AlertDescription className="mt-2">
-              Click on cells to reveal them. Avoid mines!
+              Click on cells to reveal them. Avoid mines! Find all safe cells to
+              win.
             </AlertDescription>
           </Alert>
         );
       } else {
         return (
           <Alert className="mb-4 mt-4 border-gray-500 bg-gray-500/10">
-            <AlertTitle>Waiting for other player</AlertTitle>
+            <AlertTitle>Waiting for Gorilla</AlertTitle>
             <AlertDescription>
               {gameState.currentTurn
-                ? `Player ${gameState.currentTurn.substring(0, 4)} is taking their turn`
-                : "Waiting for next player"}
+                ? `The Gorilla is hunting! Stay hidden!`
+                : "Waiting for Gorilla to make a move"}
             </AlertDescription>
           </Alert>
         );
@@ -354,6 +419,10 @@ export function Game({ gameState, myPlayerId }: GameProps) {
   const renderGameContent = () => {
     const isPlacingMines = gameState.status === GameStatus.PLACING_MINES;
     const isPlaying = gameState.status === GameStatus.PLAYING;
+
+    // Determine title emoji based on player role
+    const titleEmoji = isGorilla ? "🦍" : "👨";
+    const titleText = isGorilla ? "Gorilla" : "Man";
 
     return (
       <div className="flex flex-col h-screen p-4 bg-gradient-to-b from-background to-muted/50 w-full">
@@ -370,9 +439,18 @@ export function Game({ gameState, myPlayerId }: GameProps) {
             <ChevronLeft className="h-4 w-4" />
             Back
           </Button>
-          <h1 className="text-xl font-bold text-foreground">Gorilla vs. Men</h1>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{titleEmoji}</span>
+            <h1 className="text-xl font-bold text-foreground">{titleText}</h1>
+          </div>
           <div className="w-20 flex justify-end">{renderTimer()}</div>
         </div>
+
+        {showStartedMessage && (
+          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-md shadow-lg z-50 animate-bounce">
+            Game started! {isGorilla ? "Hunt for men!" : "Gorilla is hunting!"}
+          </div>
+        )}
 
         <div className="flex-grow flex flex-col items-center justify-center">
           {renderGameStatus()}
