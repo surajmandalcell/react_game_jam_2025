@@ -221,6 +221,61 @@ function checkMinePlacementTimer(game: GameState, gameTime: number): void {
   }
 }
 
+// Function to count nearby mines for a cell
+function countNearbyMines(game: GameState, x: number, y: number): number {
+  let count = 0;
+
+  // Check all 8 adjacent cells
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue; // Skip the cell itself
+
+      const nx = x + dx;
+      const ny = y + dy;
+
+      // Check if adjacent cell is within grid bounds
+      if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+        if (game.grid[ny][nx].hasMine) {
+          count++;
+        }
+      }
+    }
+  }
+
+  return count;
+}
+
+// Flood fill function to reveal adjacent empty cells
+function floodFill(game: GameState, x: number, y: number): void {
+  // If cell is out of bounds, already revealed, or has a mine, stop
+  if (
+    x < 0 ||
+    x >= GRID_SIZE ||
+    y < 0 ||
+    y >= GRID_SIZE ||
+    game.grid[y][x].revealed ||
+    game.grid[y][x].hasMine
+  ) {
+    return;
+  }
+
+  // Reveal this cell
+  game.grid[y][x].revealed = true;
+  game.revealedCount++;
+
+  // If this cell has no nearby mines, recursively reveal adjacent cells
+  const nearbyMines = countNearbyMines(game, x, y);
+  if (nearbyMines === 0) {
+    // Check all 8 adjacent cells
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue; // Skip the cell itself
+        floodFill(game, x + dx, y + dy);
+      }
+    }
+  }
+}
+
 Rune.initLogic({
   minPlayers: 1,
   maxPlayers: TOTAL_PLAYERS,
@@ -334,17 +389,24 @@ Rune.initLogic({
       if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return;
       if (game.grid[y][x].revealed) return;
 
-      game.grid[y][x].revealed = true;
-      game.revealedCount++;
-
       if (game.grid[y][x].hasMine) {
+        // If cell has a mine, just reveal it and end the game
+        game.grid[y][x].revealed = true;
+        game.revealedCount++;
+
         game.status = GameStatus.ENDED;
         game.winner = game.grid[y][x].mineOwnerId ?? null;
         game.winningRole = PlayerRole.MAN;
-      } else if (checkGorillaWin(game)) {
-        game.status = GameStatus.ENDED;
-        game.winner = game.gorillaPlayerId ?? null;
-        game.winningRole = PlayerRole.GORILLA;
+      } else {
+        // If cell doesn't have a mine, use flood fill to reveal empty cells
+        floodFill(game, x, y);
+
+        // Check if gorilla wins after revealing cells
+        if (checkGorillaWin(game)) {
+          game.status = GameStatus.ENDED;
+          game.winner = game.gorillaPlayerId ?? null;
+          game.winningRole = PlayerRole.GORILLA;
+        }
       }
     },
 

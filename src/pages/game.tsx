@@ -5,6 +5,7 @@ import {
   PlayerRole,
   GRID_SIZE,
   MINES_PER_PLAYER,
+  Cell,
 } from "../logic";
 import { PlayerId } from "rune-sdk/multiplayer";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,65 @@ declare global {
   interface Window {
     Rune: any;
   }
+}
+
+// Function to count nearby mines for a cell
+function countNearbyMines(grid: Cell[][], x: number, y: number): number {
+  let count = 0;
+
+  // Check all 8 adjacent cells
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue; // Skip the cell itself
+
+      const nx = x + dx;
+      const ny = y + dy;
+
+      // Check if adjacent cell is within grid bounds
+      if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+        if (grid[ny][nx].hasMine) {
+          count++;
+        }
+      }
+    }
+  }
+
+  return count;
+}
+
+// Component to display number of nearby mines
+interface MineCounterProps {
+  x: number;
+  y: number;
+  gameState: GameState;
+}
+
+function MineCounter({ x, y, gameState }: MineCounterProps) {
+  const count = countNearbyMines(gameState.grid, x, y);
+
+  if (count === 0) {
+    return null; // Don't display anything for cells with no nearby mines
+  }
+
+  // Colors for different mine counts
+  const colors = {
+    1: "text-blue-600",
+    2: "text-green-600",
+    3: "text-red-600",
+    4: "text-purple-800",
+    5: "text-amber-700",
+    6: "text-cyan-600",
+    7: "text-black",
+    8: "text-gray-600",
+  };
+
+  return (
+    <span
+      className={`font-bold ${colors[count as keyof typeof colors] || "text-black"}`}
+    >
+      {count}
+    </span>
+  );
 }
 
 // SVG patterns for cells
@@ -720,10 +780,14 @@ export function Game({ gameState, myPlayerId }: GameProps) {
                       {/* Show mines during placement phase for the mine owner */}
                       {cell.revealed && cell.hasMine && "💣"}
                       {!cell.revealed &&
-                        isPlacingMines &&
                         cell.hasMine &&
                         cell.mineOwnerId === myPlayerId &&
+                        myRole === PlayerRole.MAN &&
                         "💣"}
+                      {/* Show number of nearby mines for revealed cells */}
+                      {cell.revealed && !cell.hasMine && (
+                        <MineCounter x={x} y={y} gameState={gameState} />
+                      )}
                     </span>
                   </div>
                 );
