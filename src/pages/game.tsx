@@ -598,7 +598,7 @@ export function Game({ gameState, myPlayerId }: GameProps) {
                 Your turn! Hunt for men!
               </AlertTitle>
             </div>
-            <AlertDescription className="mt-2">
+            <AlertDescription className="">
               Click on cells to reveal them. Avoid mines! Find all safe cells to
               win.
             </AlertDescription>
@@ -651,22 +651,6 @@ export function Game({ gameState, myPlayerId }: GameProps) {
           <div className="w-20 flex justify-end">{renderTimer()}</div>
         </div>
 
-        {/* Game State Debug Banner */}
-        <div
-          className={`mb-2 p-2 text-center text-white font-bold rounded-md ${
-            gameState.status === GameStatus.PLAYING
-              ? "bg-green-600"
-              : gameState.status === GameStatus.PLACING_MINES
-                ? "bg-amber-600"
-                : "bg-gray-600"
-          }`}
-        >
-          GAME STATE: {gameState.status}{" "}
-          {allMinesPlaced &&
-            gameState.status === GameStatus.PLACING_MINES &&
-            "- ALL MINES PLACED!"}
-        </div>
-
         {showStartedMessage && (
           <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-md shadow-lg z-50 animate-bounce">
             Game started! {isGorilla ? "Hunt for men!" : "Gorilla is hunting!"}
@@ -682,7 +666,6 @@ export function Game({ gameState, myPlayerId }: GameProps) {
                 const cell = gameState.grid[y][x];
                 const isAnimating = animation?.x === x && animation?.y === y;
 
-                let cellContent = "";
                 let cellClass = "relative overflow-hidden";
 
                 // Base class based on game state
@@ -697,17 +680,15 @@ export function Game({ gameState, myPlayerId }: GameProps) {
                 if (cell.revealed) {
                   cellClass = "bg-gray-100 dark:bg-gray-700";
                   if (cell.hasMine) {
-                    cellContent = "💣";
                     cellClass = "bg-red-300 dark:bg-red-900 animate-bounce";
                   }
                 } else if (
-                  gameState.status === GameStatus.PLACING_MINES &&
+                  isPlacingMines &&
                   myRole === PlayerRole.MAN &&
                   cell.hasMine &&
                   cell.mineOwnerId === myPlayerId
                 ) {
-                  // Show my mines during placement phase
-                  cellContent = "💣";
+                  // Show my mines during placement phase with special styling
                   cellClass =
                     "bg-blue-200 dark:bg-blue-900 relative overflow-hidden";
                 }
@@ -736,14 +717,22 @@ export function Game({ gameState, myPlayerId }: GameProps) {
                       isPlaying &&
                       grassPattern}
                     {!cell.revealed && isPlacingMines && dirtPattern}
-                    <span className="z-10 relative">{cellContent}</span>
+                    <span className="z-10 relative">
+                      {/* Show mines during placement phase for the mine owner */}
+                      {cell.revealed && cell.hasMine && "💣"}
+                      {!cell.revealed &&
+                        isPlacingMines &&
+                        cell.hasMine &&
+                        cell.mineOwnerId === myPlayerId &&
+                        "💣"}
+                    </span>
                   </div>
                 );
               })
             )}
           </div>
 
-          <Card className="w-full max-w-md shadow-lg border-t-4 border-t-primary">
+          <Card className="w-full max-w-md shadow-lg border-t-4 border-t-primary min-w-full">
             <CardHeader className="py-2">
               <CardTitle className="text-sm flex items-center justify-between">
                 <span>Game Progress</span>
