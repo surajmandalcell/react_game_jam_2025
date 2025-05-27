@@ -210,14 +210,49 @@ export function Lobby({ gameState, myPlayerId }: LobbyProps) {
           <CardTitle>Game Info</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline">Gorilla</Badge>
-              <span className="text-sm">Hunts for men by revealing cells</span>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground italic mb-2">
+              "Trust no one, not even the ground beneath your feet..."
+            </p>
+            <div className="flex items-start gap-3">
+              <Badge
+                variant="outline"
+                className="bg-amber-100 dark:bg-amber-900/30"
+              >
+                🦍 Gorilla
+              </Badge>
+              <div>
+                <p className="text-sm font-medium">
+                  Navigate a treacherous landscape
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Use deduction and the cascade reveal system to uncover safe
+                  paths while avoiding hidden mines.
+                </p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline">Men</Badge>
-              <span className="text-sm">Place mines to catch the gorilla</span>
+            <div className="flex items-start gap-3">
+              <Badge
+                variant="outline"
+                className="bg-blue-100 dark:bg-blue-900/30"
+              >
+                👨 Men
+              </Badge>
+              <div>
+                <p className="text-sm font-medium">
+                  Deceive and trap your prey
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Place mines strategically to catch the Gorilla, but beware -
+                  your fellow Men may have their own agenda.
+                </p>
+              </div>
+            </div>
+            <div className="mt-2 border-t pt-2 text-xs text-center text-muted-foreground">
+              <p>
+                A game of deception for the React Game Jam 2025 - "Trust No One"
+                theme
+              </p>
             </div>
           </div>
         </CardContent>
