@@ -36,6 +36,8 @@ export interface GameState {
   revealedCount: number;
   minePlacementEndTime?: number; // Timestamp when mine placement should end
   randomMinesPlaced: Record<PlayerId, boolean>; // Track if random mines were placed for a player
+  lastTimerLogTime?: number; // Track the last time we logged the timer expiration
+  previousMinesToPlace?: Record<PlayerId, number>; // Track previous mines to place
 }
 
 // For placeMine and revealCell, we need to use objects to match Rune's expectations
@@ -80,9 +82,6 @@ function initializeGrid(): Cell[][] {
   return grid;
 }
 
-// Track previous values to avoid duplicate logging
-let previousMinesToPlace = {};
-
 function allMinesPlaced(game: GameState): boolean {
   // Convert minesToPlace to a simple object for comparison
   const currentMinesToPlace = {};
@@ -90,14 +89,20 @@ function allMinesPlaced(game: GameState): boolean {
     currentMinesToPlace[key] = game.minesToPlace[key];
   });
 
+  // Initialize previousMinesToPlace in game state if not exists
+  if (!game.previousMinesToPlace) {
+    game.previousMinesToPlace = {};
+  }
+
   // Only log if values have changed
   const minesToPlaceChanged =
     JSON.stringify(currentMinesToPlace) !==
-    JSON.stringify(previousMinesToPlace);
+    JSON.stringify(game.previousMinesToPlace);
 
   if (minesToPlaceChanged) {
     console.log("Checking if all mines are placed:", currentMinesToPlace);
-    previousMinesToPlace = { ...currentMinesToPlace };
+    // Store in game state instead of global variable
+    game.previousMinesToPlace = JSON.parse(JSON.stringify(currentMinesToPlace));
   }
 
   // Check each player's mines
@@ -191,12 +196,13 @@ function checkMinePlacementTimer(game: GameState, gameTime: number): void {
   if (gameTime >= game.minePlacementEndTime) {
     // Only log once per second
     const currentSecond = Math.floor(gameTime / 1000);
-    if (currentSecond > lastTimerExpirationLog) {
+    // Store the last logged time in the game state instead of a global variable
+    if (!game.lastTimerLogTime || currentSecond > game.lastTimerLogTime) {
       console.log("Mine placement timer expired", {
         gameTime,
         minePlacementEndTime: game.minePlacementEndTime,
       });
-      lastTimerExpirationLog = currentSecond;
+      game.lastTimerLogTime = currentSecond;
     }
 
     // Time's up! Place random mines for ALL players who haven't placed their mines
@@ -464,7 +470,7 @@ Rune.initLogic({
     forceStartPlaying: (_, { game }) => {
       console.log("🔥🔥🔥 forceStartPlaying CALLED 🔥🔥🔥", {
         currentStatus: game.status,
-        timestamp: new Date().toISOString(),
+        timestamp: Rune.gameTime(),
       });
 
       if (game.status !== GameStatus.PLACING_MINES) {
@@ -536,7 +542,7 @@ Rune.initLogic({
         allMinesPlaced: allMinesPlaced(game),
         gorillaPlayerId: game.gorillaPlayerId,
         currentTurn: game.currentTurn,
-        timestamp: new Date().toISOString(),
+        timestamp: Rune.gameTime(),
       });
 
       // If we're in PLACING_MINES state and all mines are placed, force transition to PLAYING

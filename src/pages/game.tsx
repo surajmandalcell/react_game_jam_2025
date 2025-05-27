@@ -184,7 +184,7 @@ export function Game({ gameState, myPlayerId }: GameProps) {
         ),
         gorillaPlayerId: gameState.gorillaPlayerId,
         currentTurn: gameState.currentTurn,
-        timestamp: new Date().toISOString(),
+        timestamp: Rune.gameTime(),
       });
 
       // Show a message when transitioning to playing state
