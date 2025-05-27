@@ -70,6 +70,7 @@
     "@types/node": "^22.15.21",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react": "^4.5.0",
     "globals": "^15.8.0",
     "jsdom": "^26.1.0",
     "prettier": "^3.3.3",
