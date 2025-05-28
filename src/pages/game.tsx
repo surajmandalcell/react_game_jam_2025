@@ -691,7 +691,7 @@ export function Game({ gameState, myPlayerId }: GameProps) {
     const titleText = isGorilla ? "Gorilla" : "Man";
 
     return (
-      <div className="flex flex-col h-screen p-4 bg-gradient-to-b from-background to-muted/50 w-full">
+      <div className="flex flex-col h-screen p-4 bg-gradient-to-b from-background to-muted/50 w-full overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <Button
             variant="outline"

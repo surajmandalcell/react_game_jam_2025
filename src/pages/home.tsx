@@ -27,7 +27,7 @@ export function Home() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen p-4 bg-gradient-to-b from-background to-muted/30 w-full">
+    <div className="flex flex-col items-center justify-center h-screen p-4 bg-gradient-to-b from-background to-muted/30 w-full overflow-y-auto">
       <Card className="w-full max-w-md shadow-lg border-t-4 border-t-primary">
         <CardHeader className="text-center">
           <Badge className="mx-auto mb-2 bg-amber-600 hover:bg-amber-700">

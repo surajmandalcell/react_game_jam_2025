@@ -99,7 +99,7 @@ export function Lobby({ gameState, myPlayerId }: LobbyProps) {
   };
 
   return (
-    <div className="flex flex-col h-screen p-4 bg-background w-full">
+    <div className="flex flex-col h-screen p-4 bg-background w-full overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
         <Button
           variant="outline"
