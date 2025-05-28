@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { GameState, PlayerRole } from "../logic";
+import React, { useEffect, useState } from "react";
+import { GameState, PlayerRole, GameStatus } from "../logic";
 import { Route, router } from "../router";
 import { PlayerId } from "rune-sdk/multiplayer";
 import { Button } from "@/components/ui/button";
@@ -19,9 +19,20 @@ interface EndProps {
 }
 
 export function End({ gameState, myPlayerId }: EndProps) {
+  const [isRestarting, setIsRestarting] = useState(false);
+
   useEffect(() => {
     document.title = "Gorilla vs Men - Game Over";
   }, []);
+
+  // Monitor game state changes to detect when game transitions to LOBBY
+  useEffect(() => {
+    if (isRestarting && gameState?.status === GameStatus.LOBBY) {
+      // If we're restarting and the game is now in LOBBY state, navigate to home
+      router.navigate(Route.LOBBY);
+      setIsRestarting(false);
+    }
+  }, [gameState?.status, isRestarting]);
 
   if (!gameState || !myPlayerId) {
     return (
@@ -34,9 +45,12 @@ export function End({ gameState, myPlayerId }: EndProps) {
 
   const handlePlayAgain = () => {
     try {
+      setIsRestarting(true);
       Rune.actions.restartGame();
+      // The navigation will happen in the useEffect when gameState.status changes to LOBBY
     } catch (error) {
       console.error("Error restarting game:", error);
+      setIsRestarting(false);
     }
   };
 
@@ -77,8 +91,8 @@ export function End({ gameState, myPlayerId }: EndProps) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen p-4 bg-background">
-      <Card className="w-full max-w-md">
+    <div className="flex flex-col items-center justify-center h-screen p-4 bg-background w-full">
+      <Card className="min-w-[70%] w-[70%]">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Game Over</CardTitle>
         </CardHeader>
@@ -144,7 +158,9 @@ export function End({ gameState, myPlayerId }: EndProps) {
           <Button variant="outline" onClick={() => router.navigate(Route.HOME)}>
             Home
           </Button>
-          <Button onClick={handlePlayAgain}>Play Again</Button>
+          <Button onClick={handlePlayAgain} disabled={isRestarting}>
+            {isRestarting ? "Restarting..." : "Play Again"}
+          </Button>
         </CardFooter>
       </Card>
     </div>
