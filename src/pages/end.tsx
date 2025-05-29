@@ -92,7 +92,7 @@ export function End({ gameState, myPlayerId }: EndProps) {
 
   return (
     <div className="flex flex-col items-center justify-center h-screen p-4 bg-background w-full">
-      <Card className="min-w-[70%] w-[70%]">
+      <Card className="min-w-[90%] w-[90%]">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Game Over</CardTitle>
         </CardHeader>
