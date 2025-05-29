@@ -105,9 +105,13 @@ function allMinesPlaced(game: GameState): boolean {
     game.previousMinesToPlace = JSON.parse(JSON.stringify(currentMinesToPlace));
   }
 
-  // Check each player's mines
+  // Check each MAN player's mines
   for (const playerId in game.minesToPlace) {
-    if (game.minesToPlace[playerId] > 0) {
+    // Only check MAN players, GORILLA players don't place mines
+    if (
+      game.playerRoles[playerId] === PlayerRole.MAN &&
+      game.minesToPlace[playerId] > 0
+    ) {
       if (minesToPlaceChanged) {
         console.log(
           `Player ${playerId} still has ${game.minesToPlace[playerId]} mines to place`
@@ -134,6 +138,14 @@ function checkGorillaWin(game: GameState): boolean {
 }
 
 function placeRandomMines(game: GameState, playerId: PlayerId): void {
+  // Safety check: only place mines for MAN players
+  if (game.playerRoles[playerId] !== PlayerRole.MAN) {
+    console.log(
+      `Skipping random mine placement for player ${playerId}: not a MAN (role: ${game.playerRoles[playerId]})`
+    );
+    return;
+  }
+
   const minesToPlace = game.minesToPlace[playerId];
   if (minesToPlace <= 0) return;
 
@@ -205,10 +217,13 @@ function checkMinePlacementTimer(game: GameState, gameTime: number): void {
       game.lastTimerLogTime = currentSecond;
     }
 
-    // Time's up! Place random mines for ALL players who haven't placed their mines
-    // Including the gorilla player (this was the issue)
+    // Time's up! Place random mines for MAN players who haven't placed their mines
     for (const playerId in game.minesToPlace) {
-      if (game.minesToPlace[playerId] > 0) {
+      // Only place mines for MAN players, GORILLA players don't place mines
+      if (
+        game.minesToPlace[playerId] > 0 &&
+        game.playerRoles[playerId] === PlayerRole.MAN
+      ) {
         console.log(
           `Placing random mines for player ${playerId} (${game.playerRoles[playerId]})`
         );
@@ -297,11 +312,19 @@ Rune.initLogic({
       revealedCount: 0,
       minePlacementEndTime: undefined,
       randomMinesPlaced: {},
+      previousMinesToPlace: undefined,
     };
 
+    // Initialize player roles and mines for all players
     allPlayerIds.forEach((playerId) => {
       initialState.playerRoles[playerId] = PlayerRole.MAN;
-      initialState.minesToPlace[playerId] = MINES_PER_PLAYER;
+      initialState.minesToPlace[playerId] = 0; // Initialize to 0, will be set properly when game starts
+      initialState.randomMinesPlaced[playerId] = false;
+    });
+
+    console.log("Game initialized with state:", {
+      playerRoles: initialState.playerRoles,
+      minesToPlace: initialState.minesToPlace,
     });
 
     return initialState;
@@ -334,7 +357,9 @@ Rune.initLogic({
         return;
       }
       if (game.playerRoles[playerId] !== PlayerRole.MAN) {
-        console.log("Cannot place mine: player is not a MAN");
+        console.log(
+          `Cannot place mine: player is not a MAN (role: ${game.playerRoles[playerId]})`
+        );
         return;
       }
       if (game.minesToPlace[playerId] <= 0) {
@@ -434,19 +459,33 @@ Rune.initLogic({
         }
       }
 
-      // Initialize mines to place for each player
+      // Reset and reinitialize mines to place for each player based on their role
       for (const playerId in game.playerRoles) {
         if (game.playerRoles[playerId] === PlayerRole.MAN) {
+          // MAN players get mines to place
           game.minesToPlace[playerId] = MINES_PER_PLAYER;
-          game.randomMinesPlaced[playerId] = false;
+        } else {
+          // GORILLA players don't place mines
+          game.minesToPlace[playerId] = 0;
         }
+        // Reset random mines placed state
+        game.randomMinesPlaced[playerId] = false;
       }
+
+      // Reset the previousMinesToPlace to avoid any stale comparisons
+      game.previousMinesToPlace = undefined;
 
       // Set the end time for mine placement
       game.minePlacementEndTime = Rune.gameTime() + MINE_PLACEMENT_TIME * 1000;
 
       // Change game state to placing mines
       game.status = GameStatus.PLACING_MINES;
+
+      console.log("Game started, mines initialized:", {
+        playerRoles: game.playerRoles,
+        minesToPlace: game.minesToPlace,
+        gorillaPlayerId: game.gorillaPlayerId,
+      });
     },
 
     restartGame: (_, { game }) => {
@@ -457,14 +496,22 @@ Rune.initLogic({
       game.revealedCount = 0;
       game.winner = null;
       game.winningRole = null;
+      game.minePlacementEndTime = undefined;
+      game.currentTurn = null;
 
+      // Clear the minesToPlace completely to avoid any leftover values
+      game.minesToPlace = {};
+
+      // Properly initialize mines for all players based on current roles
       for (const playerId in game.playerRoles) {
-        if (game.playerRoles[playerId] === PlayerRole.MAN) {
-          game.minesToPlace[playerId] = MINES_PER_PLAYER;
-        } else {
-          game.minesToPlace[playerId] = 0;
-        }
+        // Initialize minesToPlace to 0 for all players first
+        game.minesToPlace[playerId] = 0;
+        // Clear the random mines placed tracking
+        game.randomMinesPlaced[playerId] = false;
       }
+
+      // Reset the previousMinesToPlace to avoid any stale comparisons
+      game.previousMinesToPlace = undefined;
     },
 
     forceStartPlaying: (_, { game }) => {
@@ -487,7 +534,7 @@ Rune.initLogic({
         gorillaPlayerId: game.gorillaPlayerId,
       });
 
-      // Place random mines for any players who haven't placed all their mines
+      // Place random mines for MAN players who haven't placed all their mines
       for (const playerId in game.playerRoles) {
         if (
           game.playerRoles[playerId] === PlayerRole.MAN &&
@@ -713,19 +760,31 @@ Rune.initLogic({
           game.minePlacementEndTime &&
           Rune.gameTime() >= game.minePlacementEndTime + 2000
         ) {
-          console.log("🔄 TIMER EXPIRED: Force placing mines for all players");
+          console.log("🔄 TIMER EXPIRED: Force placing mines for MAN players", {
+            minesToPlace: { ...game.minesToPlace },
+            playerRoles: { ...game.playerRoles },
+          });
 
-          // Place mines for all players
+          // Place mines for MAN players only
           for (const playerId in game.minesToPlace) {
-            if (game.minesToPlace[playerId] > 0) {
-              console.log(`Forcing mine placement for player ${playerId}`);
+            if (
+              game.minesToPlace[playerId] > 0 &&
+              game.playerRoles[playerId] === PlayerRole.MAN
+            ) {
+              console.log(
+                `Forcing mine placement for player ${playerId} (role: ${game.playerRoles[playerId]})`
+              );
               placeRandomMines(game, playerId);
             }
           }
 
           // Force transition to PLAYING
           console.log(
-            "🔄 FORCING transition to PLAYING state after timer expired"
+            "🔄 FORCING transition to PLAYING state after timer expired",
+            {
+              minesToPlace: { ...game.minesToPlace },
+              allMinesPlaced: allMinesPlaced(game),
+            }
           );
           game.status = GameStatus.PLAYING;
           game.currentTurn = game.gorillaPlayerId;
